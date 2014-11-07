@@ -1,0 +1,8 @@
+﻿# NuGet packages.
+packages/
+
+**/Debug/
+**/Release/
+
+*.suo
+*.user
