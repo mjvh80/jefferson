@@ -10,8 +10,10 @@
       <requireLicenseAcceptance>false</requireLicenseAcceptance>
       <description>@description@</description>
       <releaseNotes>@releaseNotes@</releaseNotes>
-      <copyright>Copyright Marcus van Houdt 2014</copyright>
+      <copyright>@copyright@</copyright>
       <tags>Jefferson</tags>
+      <iconUrl>https://raw.githubusercontent.com/mjvh80/jefferson/master/logo.png</iconUrl>
+      <licenseUrl>https://raw.githubusercontent.com/mjvh80/jefferson/master/license.txt</licenseUrl>
       @dependencies@
    </metadata>
 </package>

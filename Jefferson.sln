@@ -9,13 +9,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.Tests", "Jefferso
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{EB49043E-01F0-4B68-8AC0-8B712FF128F3}"
 	ProjectSection(SolutionItems) = preProject
-		jefferson.nuspec = jefferson.nuspec
+		.nuget\jefferson.nuspec = .nuget\jefferson.nuspec
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B6227277-B45D-4C86-8369-5BF059A805C7}"
 	ProjectSection(SolutionItems) = preProject
+		build.bat = build.bat
 		build.fsx = build.fsx
+		fake.bat = fake.bat
 	EndProjectSection
 EndProject
 Global

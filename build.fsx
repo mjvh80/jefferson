@@ -4,6 +4,7 @@
 
 open Fake
 open Fake.FileSystemHelper
+open Fake.NuGetHelper
 open System
 
 let inline (/) x y = IO.Path.Combine(x, y)
@@ -16,17 +17,37 @@ let pkgDir = buildDir / "nuget" |> mkdir
 let msbuildTarget = getBuildParamOrDefault "msbuildTarget" "Build"
 let buildMode = getBuildParamOrDefault "buildMode" "Release"
 
+// Add "publishNuGet=true" to command line.
+let publishNuGet = Boolean.Parse(getBuildParamOrDefault "publishNuGet" "false")
+
 let coreBuildDir = "Jefferson.Core/bin" / buildMode
+let coreTestBuildDir = "Jefferson.Tests/bin" / buildMode
 
 let getSemanticVersion (msVersion: Version) = msVersion.Major.ToString() + "." + msVersion.Minor.ToString() + "." + msVersion.Build.ToString()
 let nugetVersion (asm) = getBuildParamOrDefault "pkgVersion" (asm |> VersionHelper.GetAssemblyVersion |> getSemanticVersion)
+
+let jeffersonCsproj = !! ("./Jefferson.Core/*.csproj")
+let jeffersonTestCsproj = !! ("./Jefferson.Tests/*.csproj")
+
+let xunitConsole = "packages/xunit.runners.1.9.2/tools/xunit.console.clr4.exe"
 
 trace "Building Jefferson, dumping environment:"
 trace (" -- msbuild target: " + msbuildTarget)
 trace (" -- msbuild configuration: " + buildMode)
 trace (" -- build directory: " + buildDir)
 trace (" -- nuget output directory: " + pkgDir)
+trace (" -- publish nuget: " + publishNuGet.ToString())
 
+Target "BuildCore" <| fun _ ->
+   MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonCsproj
+   |> Log "Build Core Output"
+
+Target "BuildTests" <| fun _ ->
+   MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonTestCsproj  
+   |> Log "Build Tests Output"
+
+Target "Test" <| fun _ ->
+   !!(coreTestBuildDir / "Jefferson.Tests.dll") |> xUnit (fun p -> {p with OutputDir = coreTestBuildDir })
 
 Target "Nuget" <| fun _ ->
    CleanDirs [tempDir]
@@ -38,7 +59,7 @@ Target "Nuget" <| fun _ ->
 
    // Copy the main core DLL and its PDB.
    CopyFile libnet45 (coreBuildDir / "Jefferson.dll") 
-   CopyFile libnet45 (coreBuildDir / "Jefferson.dll")
+   CopyFile libnet45 (coreBuildDir / "Jefferson.pdb")
    
    // Create package.
    NuGet (fun pkg ->
@@ -53,6 +74,25 @@ Target "Nuget" <| fun _ ->
          Version = version
          Dependencies = [] //  NuGetHelper.getDependencies (libCoreDir / "packages.config")
          // AccessKey = getBuildParamOrDefault "nugetkey" ""
-         Publish = false
+         Copyright = "© 2014 Marcus van Houdt"
+         Publish = publishNuGet
       }) ".nuget/jefferson.nuspec"
 
+Target "Default" <| (fun _ -> trace "Default Target")
+
+"Default"
+   ==> "BuildCore"
+
+"Default"
+   ==> "BuildTests"
+
+"BuildTests"
+   ==> "Test"
+
+"BuildCore"
+   ==> "NuGet"
+
+"Test"
+   ==> "NuGet"
+
+RunTargetOrDefault "Default"
