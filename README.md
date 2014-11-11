@@ -32,7 +32,7 @@ but as output is abstracted through an `IOutputWriter` (and one that implements 
 * if anything more complex is required, add a method to the context class (aka the model)
 
 ## Supported expression syntax
-Some of the following is supported (list not exclusive):
+Some of the following is supported (list not exhaustive):
 * arithmetic
 * boolean operators
 * + as string concatenation
