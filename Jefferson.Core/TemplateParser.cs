@@ -424,11 +424,11 @@ namespace Jefferson
 
          public CompiledExpression<Object, TOutput> EvaluateExpression<TOutput>(String expr, Boolean except)
          {
-            var parser = new _ExpressionParser<Object, TOutput>();
+            var parser = new ExpressionParser<Object, TOutput>();
 
             // Parse the expression, compile it and run it.
             // todo: flags
-            return parser._ParseExpressionInternal(expr, ResolveName, _ExpressionParsingFlags.IgnoreCase, this.CurrentContextType);
+            return parser._ParseExpressionInternal(expr, ResolveName, ExpressionParsingFlags.IgnoreCase, this.CurrentContextType);
          }
 
          private static readonly Regex _sParentExpr = new Regex(@"^\$\d+$");

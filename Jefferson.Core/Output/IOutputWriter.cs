@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Jefferson
+namespace Jefferson.Output
 {
    public interface IOutputWriter
    {

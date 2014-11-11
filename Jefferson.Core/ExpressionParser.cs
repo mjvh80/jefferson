@@ -40,7 +40,7 @@ namespace Jefferson
    }
 
    [Flags]
-   public enum _ExpressionParsingFlags
+   public enum ExpressionParsingFlags
    {
       None = 0,
 
@@ -67,7 +67,7 @@ namespace Jefferson
       public Type OutputType; // invariant: typeof(TOutput).IsAssignableFrom(OutputType)
    }
 
-   public class _PredicateParser<TContext> : _ExpressionParser<TContext, Boolean> { }
+   public class PredicateParser<TContext> : ExpressionParser<TContext, Boolean> { }
 
    internal delegate BinOpMap DefineOpFn(BinOp f, params String[] operators);
    internal delegate Production MakeBinOpProductionFn(Func<Production> leftExpr, params BinOpMap[] ops);
@@ -111,15 +111,15 @@ namespace Jefferson
    }
 
    [DebuggerDisplay("{Target.ToString()}")]
-   public delegate TOutput _ExpressionDelegate<in TContext, out TOutput>(TContext context);
+   public delegate TOutput ExpressionDelegate<in TContext, out TOutput>(TContext context);
 
-   public class _ExpressionParser<TContext, TOutput>
+   public class ExpressionParser<TContext, TOutput>
    {
       // For debugger purposes only.
       private String _ContextTypeString { get { return typeof(TContext).Name; } }
       private String _OutputTypeString { get { return typeof(TOutput).Name; } }
 
-      public _ExpressionDelegate<TContext, TOutput> ParseExpression(String expr)
+      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr)
       {
          return ParseExpression(expr, null);
       }
@@ -127,7 +127,7 @@ namespace Jefferson
       /// <summary>
       /// Convenience overload to obtain actual type from the given object instance. This is mainly useful for use with anonymous types.
       /// </summary>
-      public _ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Object instanceOfActualType)
+      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Object instanceOfActualType)
       {
          if (instanceOfActualType == null)
             throw new ArgumentNullException("instanceOfActualType");
@@ -138,7 +138,7 @@ namespace Jefferson
       /// <summary>
       /// Convenience overload for actual type.
       /// </summary>
-      public _ExpressionDelegate<TContext, TOutput> ParseExpression<TDerivedContext>(String expr) where TDerivedContext : TContext
+      public ExpressionDelegate<TContext, TOutput> ParseExpression<TDerivedContext>(String expr) where TDerivedContext : TContext
       {
          return ParseExpression(expr, typeof(TDerivedContext));
       }
@@ -146,12 +146,12 @@ namespace Jefferson
       /// <summary>
       /// The actualContextType should be a type derived from TContext. This is particularly useful if using anonymous types derived from Object.
       /// </summary>
-      public _ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Type actualContextType)
+      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Type actualContextType)
       {
-         return ParseExpression(expr, null, _ExpressionParsingFlags.None, actualContextType);
+         return ParseExpression(expr, null, ExpressionParsingFlags.None, actualContextType);
       }
 
-      public _ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, NameResolverDelegate nameResolver = null, _ExpressionParsingFlags flags = _ExpressionParsingFlags.None, Type actualContextType = null)
+      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
       {
          try
          {
@@ -162,7 +162,7 @@ namespace Jefferson
             while (ast.CanReduce) ast.ReduceAndCheck();
 
             Func<TContext, TOutput> compiledResult;
-            if (flags.HasFlag(_ExpressionParsingFlags.AddPdbGenerator))
+            if (flags.HasFlag(ExpressionParsingFlags.AddPdbGenerator))
                compiledResult = ast.Compile(DebugInfoGenerator.CreatePdbGenerator());
             else
                compiledResult = ast.Compile();
@@ -180,7 +180,7 @@ namespace Jefferson
          }
       }
 
-      public Boolean TryParseExpression(String expr, out _ExpressionDelegate<TContext, TOutput> expression, NameResolverDelegate nameResolver = null, _ExpressionParsingFlags flags = _ExpressionParsingFlags.None, Type actualContextType = null)
+      public Boolean TryParseExpression(String expr, out ExpressionDelegate<TContext, TOutput> expression, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
       {
          expression = null;
 
@@ -220,11 +220,11 @@ namespace Jefferson
             return Expression.Invoke(repl, input);
       }
 
-      internal static NameResolverDelegate _GetDefaultNameResolver(_ExpressionParsingFlags flags = _ExpressionParsingFlags.None)
+      internal static NameResolverDelegate _GetDefaultNameResolver(ExpressionParsingFlags flags = ExpressionParsingFlags.None)
       {
          return (thisExpr, name, typeName, @default) =>
          {
-            var caseFlags = (flags & _ExpressionParsingFlags.IgnoreCase) != 0 ? BindingFlags.IgnoreCase : 0;
+            var caseFlags = (flags & ExpressionParsingFlags.IgnoreCase) != 0 ? BindingFlags.IgnoreCase : 0;
 
             // Check for an instance property or field.
             var binding = BindingFlags.Public | BindingFlags.Instance | caseFlags;
@@ -281,7 +281,7 @@ namespace Jefferson
       //             ( numberExpr ) |
       //             ( true ) | ( false ) | ( null ) |
       //             ( identifierExpr )
-      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, _ExpressionParsingFlags flags = _ExpressionParsingFlags.None, Type actualContextType = null)
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
       {
          #region Parser
 
@@ -502,10 +502,10 @@ namespace Jefferson
                var equalsMethod = typeof(String).GetMethod("Equals", BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod, null, new[] { typeof(String), typeof(StringComparison) }, null);
 
                StringComparison strComparison;
-               if (flags.HasFlag(_ExpressionParsingFlags.UseCurrentCulture))
-                  strComparison = flags.HasFlag(_ExpressionParsingFlags.IgnoreCase) ? StringComparison.CurrentCultureIgnoreCase : StringComparison.CurrentCulture;
+               if (flags.HasFlag(ExpressionParsingFlags.UseCurrentCulture))
+                  strComparison = flags.HasFlag(ExpressionParsingFlags.IgnoreCase) ? StringComparison.CurrentCultureIgnoreCase : StringComparison.CurrentCulture;
                else
-                  strComparison = flags.HasFlag(_ExpressionParsingFlags.IgnoreCase) ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture;
+                  strComparison = flags.HasFlag(ExpressionParsingFlags.IgnoreCase) ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture;
 
                return Expression.Condition(Expression.Equal(left, _nullStr), Expression.Equal(right, _nullStr), Expression.Call(left, equalsMethod, right, Expression.Constant(strComparison)));
             }
@@ -780,8 +780,8 @@ namespace Jefferson
 
                   expectAdvance("/");
 
-                  var options = flags.HasFlag(_ExpressionParsingFlags.UseCurrentCulture) ? RegexOptions.None : RegexOptions.CultureInvariant;
-                  if (flags.HasFlag(_ExpressionParsingFlags.IgnoreCase)) options |= RegexOptions.IgnoreCase;
+                  var options = flags.HasFlag(ExpressionParsingFlags.UseCurrentCulture) ? RegexOptions.None : RegexOptions.CultureInvariant;
+                  if (flags.HasFlag(ExpressionParsingFlags.IgnoreCase)) options |= RegexOptions.IgnoreCase;
 
                   // Read modifiers.
                   for (; i < expr.Length; i += 1)
@@ -952,7 +952,7 @@ namespace Jefferson
             var result = Expression.Lambda<Func<TContext, TOutput>>(body, contextExpr);
 
             // If this expression is culture independent, we do this by setting the current thread's culture.
-            if ((flags & _ExpressionParsingFlags.UseCurrentCulture) == 0)
+            if ((flags & ExpressionParsingFlags.UseCurrentCulture) == 0)
             {
                Func<Func<TContext, TOutput>, Func<TContext, TOutput>> tryFin = b => c =>
                {

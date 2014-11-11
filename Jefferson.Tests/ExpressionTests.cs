@@ -164,7 +164,7 @@ namespace Jefferson.Tests
       [Fact]
       public void If_expressions_are_supported()
       {
-         var p = new _ExpressionParser<Context, String>();
+         var p = new ExpressionParser<Context, String>();
          var c = new Context();
 
          Assert.Equal("boe", p.ParseExpression("if(true)'boe'")(c));
@@ -180,7 +180,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Issue_with_method_param_coercion()
       {
-         var p = new _ExpressionParser<Context, String>();
+         var p = new ExpressionParser<Context, String>();
 
          var c = p.ParseExpression("IncludeFile(JoinPath(APPROOT.ToString(), 'site\\packages.config'))", (@this, n, tn, def) =>
          {
@@ -194,7 +194,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Can_handle_null_in_match_input()
       {
-         var parser = new _PredicateParser<Context>();
+         var parser = new PredicateParser<Context>();
          var result = parser.ParseExpression("NullString =~ /foobar/i")(new Context());
          Assert.False(result);
 
@@ -213,7 +213,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Can_use_derived_context_type()
       {
-         _PredicateParser<Context> parser = new _PredicateParser<Context>();
+         PredicateParser<Context> parser = new PredicateParser<Context>();
          var func = parser.ParseExpression("Actual == 'ACTUAL'", typeof(ActualContext));
          Assert.True(func(new ActualContext()));
 
@@ -224,7 +224,7 @@ namespace Jefferson.Tests
       public void String_concatenation_using_anonymous_object()
       {
          var anonymousObject = new { One = 1, Str = "String" };
-         var parser = new _ExpressionParser<Object, String>();
+         var parser = new ExpressionParser<Object, String>();
          var tRunner = parser.ParseExpression("One + Str + One", anonymousObject.GetType());
          Assert.Equal("1__1", tRunner(new { One = 1, Str = "__" }));
       }
@@ -233,7 +233,7 @@ namespace Jefferson.Tests
       public void Can_use_anonymous_context()
       {
          var anonymousObject = new { Name = "name", Surname = "foobar" };
-         var parser = new _ExpressionParser<Object, String>();
+         var parser = new ExpressionParser<Object, String>();
          var runner = parser.ParseExpression("Name + ' ' + Surname", anonymousObject.GetType());
          Assert.Equal("Marcus van Houdt", runner(new { Name = "Marcus", Surname = "van Houdt" }));
       }
@@ -241,7 +241,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Inheritance_works()
       {
-         var parser = new _ExpressionParser<Context, String>();
+         var parser = new ExpressionParser<Context, String>();
 
          Assert.Equal("Direct Foo", parser.ParseExpression("FooDirect", typeof(DirectInheritedContext))(new DirectInheritedContext()));
          Assert.Equal("Direct Foo", parser.ParseExpression("FooDirect", typeof(DirectInheritedContext))(new IndirectInheritedContext()));
@@ -255,7 +255,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Various_tests()
       {
-         _PredicateParser<Context> tParser = new _PredicateParser<Context>();
+         PredicateParser<Context> tParser = new PredicateParser<Context>();
 
          Assert.True(tParser.ParseExpression(" this . Regex ( /f../ , 'f00' ) ")(new Context()));
 
@@ -278,7 +278,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Indexing_works()
       {
-         _PredicateParser<Context> tParser = new _PredicateParser<Context>();
+         PredicateParser<Context> tParser = new PredicateParser<Context>();
          Assert.True(tParser.ParseExpression("this.Ar2[1][1] == 2")(new Context()));
          Assert.False(tParser.ParseExpression(" this . Ar2 [ 1 ] [ 1 ]  == 3 ")(new Context()));
 
@@ -297,8 +297,8 @@ namespace Jefferson.Tests
       [Fact]
       public void Null_ref_issue()
       {
-         var flags = _ExpressionParsingFlags.AddPdbGenerator;
-         var p = new _PredicateParser<Context>();
+         var flags = ExpressionParsingFlags.AddPdbGenerator;
+         var p = new PredicateParser<Context>();
 
          // Interesting special case. The conversion that happens here is to string, not boolean!
          Assert.False(_ParseAndRun("'' == false"));
@@ -319,7 +319,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Can_handle_undersore_in_identifiers()
       {
-         var parser = new _ExpressionParser<UnderScoreTestContext, String>().ParseExpression("foo_bar", null, _ExpressionParsingFlags.IgnoreCase, null);
+         var parser = new ExpressionParser<UnderScoreTestContext, String>().ParseExpression("foo_bar", null, ExpressionParsingFlags.IgnoreCase, null);
          var value = parser(new UnderScoreTestContext());
          Assert.Equal("foobar", value);
       }
@@ -327,7 +327,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Ternary_operators_work()
       {
-         var p = new _ExpressionParser<Context, String>();
+         var p = new ExpressionParser<Context, String>();
 
          Assert.Equal("foo", p.ParseExpression("true ? 'foo' : 'bar'")(new Context()));
          Assert.Equal("bar", p.ParseExpression("false ? 'foo' : 'bar'")(new Context()));
@@ -371,7 +371,7 @@ namespace Jefferson.Tests
       {
          var context = new Context();
          context.NV.Add("$Foo$Bar$", "xuq");
-         var parser = new _PredicateParser<Context>();
+         var parser = new PredicateParser<Context>();
          NameResolverDelegate resolver = (e, n, tn, b) => Expression.Constant(context.NV[n]);
          Assert.True(parser.ParseExpression("$Foo$Bar$ == 'x' + 'uq'", resolver)(context));
       }
@@ -379,7 +379,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Non_string_results_are_converted()
       {
-         var parser = new _ExpressionParser<Context, String>();
+         var parser = new ExpressionParser<Context, String>();
 
          var result = parser.ParseExpression("true && true")(new Context());
 
@@ -390,7 +390,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Regex_tests()
       {
-         var parser = new _PredicateParser<Context>();
+         var parser = new PredicateParser<Context>();
 
          // There's no implicit conversion between chars and strings.
          //  Assert.Equal(true, tParser.ParseExpression("'foo'[0] == 'f'")(new Context()));
@@ -428,7 +428,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Bool_conversions_work()
       {
-         var parser = new _PredicateParser<Context>();
+         var parser = new PredicateParser<Context>();
          var c = new Context();
 
          // Truthies
@@ -460,7 +460,7 @@ namespace Jefferson.Tests
 
       private Boolean _ParseAndRun(String expr)
       {
-         var p = new _PredicateParser<Context>();
+         var p = new PredicateParser<Context>();
          return p.ParseExpression(expr)(new Context());
       }
 
@@ -524,7 +524,7 @@ namespace Jefferson.Tests
       [Fact]
       public void String_escaping_supported_through_backtick()
       {
-         var p = new _ExpressionParser<Context, String>();
+         var p = new ExpressionParser<Context, String>();
          Func<String, String> c = s => p.ParseExpression(s)(new Context());
 
          Assert.False(_ParseAndRun(@"'\m' == 'm'")); // we don't use \.
@@ -566,21 +566,21 @@ namespace Jefferson.Tests
       {
          Assert.True(_ParseAndRun("+'2' = 2"));
 
-         var p = new _ExpressionParser<Context, Int32>();
+         var p = new ExpressionParser<Context, Int32>();
          Assert.Equal(2, p.ParseExpression("+'2'")(new Context()));
       }
 
       [Fact]
       public void Some_number_conversion_tests()
       {
-         var parser = new _ExpressionParser<Context, Double>();
+         var parser = new ExpressionParser<Context, Double>();
 
          Assert.Equal(2.0, parser.ParseExpression("1 + 1.0")(new Context()));
 
-         var p2 = new _ExpressionParser<Context, Object>();
+         var p2 = new ExpressionParser<Context, Object>();
          Assert.True(p2.ParseExpression("1.0")(new Context()) is Double);
 
-         var p3 = new _ExpressionParser<Context, Double>();
+         var p3 = new ExpressionParser<Context, Double>();
          Assert.True(p3.ParseExpression("1")(new Context()) is Double);
       }
 
@@ -592,9 +592,9 @@ namespace Jefferson.Tests
          {
             Thread.CurrentThread.CurrentCulture = new CultureInfo("nl-NL");
 
-            var parser = new _ExpressionParser<Context, String>();
+            var parser = new ExpressionParser<Context, String>();
             var c = new Context();
-            var flags = _ExpressionParsingFlags.UseCurrentCulture;
+            var flags = ExpressionParsingFlags.UseCurrentCulture;
 
             var result = parser.ParseExpression("2.1.ToString()")(c);
             Assert.Equal("2.1", result); // no flag was specified
@@ -611,9 +611,9 @@ namespace Jefferson.Tests
       [Fact]
       public void Case_insensitivity_tests()
       {
-         var parser = new _ExpressionParser<Context, Boolean>();
+         var parser = new ExpressionParser<Context, Boolean>();
          var c = new Context();
-         var flags = _ExpressionParsingFlags.IgnoreCase;
+         var flags = ExpressionParsingFlags.IgnoreCase;
 
          // Ignorecase ensures identifiers are also resolved irregardless of case.
          Assert.True(parser.ParseExpression("Foobar == foOBar", null, flags)(new Context()));
@@ -630,7 +630,7 @@ namespace Jefferson.Tests
       [Fact]
       public void General_expression_tests()
       {
-         _PredicateParser<Context> parser = new _PredicateParser<Context>();
+         PredicateParser<Context> parser = new PredicateParser<Context>();
 
          // Ambiguous, this could be interpreted as:
          // 1. 'false' as truthy, so true
@@ -761,7 +761,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Bad_syntax_is_caught()
       {
-         _PredicateParser<Context> parser = new _PredicateParser<Context>();
+         PredicateParser<Context> parser = new PredicateParser<Context>();
 
          AssertError(() => parser.ParseExpression("2Foo.2Bar == true", (o, n, ns, @default) =>
          {
@@ -801,7 +801,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Dynamic_name_resolution_works()
       {
-         var p = new _ExpressionParser<Context, Int32>();
+         var p = new ExpressionParser<Context, Int32>();
 
          var c = p.ParseExpression("foo - 1+0.0", (e, n, tn, d) =>
          {

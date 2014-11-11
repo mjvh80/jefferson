@@ -47,7 +47,7 @@ namespace Jefferson.Tests
 
          if (isExpr)
          {
-            var p = new _ExpressionParser<TestContext, Object>();
+            var p = new ExpressionParser<TestContext, Object>();
             var r = p.ParseExpression(value);
 
             // First run determines variable type here.
