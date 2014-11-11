@@ -1,11 +1,12 @@
-Jefferson
-=========
+Jefferson <img src="logo.png" width="48" height="48"></img> 
+===========================================================
+[<img src="http://img.shields.io/nuget/v/Jefferson.svg"></img>](https://www.nuget.org/packages/Jefferson/)
 
 Jefferson is a tiny little "variable replacer" or more often called a "template engine".
 
 ```
 $$#if Today = Monday$$
-   Hello $$#each Users['kitchen']$$, how is $$Name.Capitalize()$$ today$$/each$$?
+   Hello $$#each Users['active']$$, how is $$Name.Capitalize()$$ on this fine Monday$$/each$$?
 $$/if$$
 ```
 
@@ -51,3 +52,6 @@ Probably, it's compiled using Linq expression trees, but I have done no formal t
 
 #### Is it type safe?
 Yes.
+
+#### What's the license?
+Apache v2, see [license.txt](license.txt).
