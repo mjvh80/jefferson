@@ -1,7 +1,10 @@
 ﻿using Jefferson.Directives;
+using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq.Expressions;
+using System.Text;
 using Xunit;
 
 namespace Jefferson.Tests
@@ -441,6 +444,36 @@ $$/each$$
             Assert.True(false);
          }
          catch
+         {
+            // OK
+         }
+      }
+
+      [Fact]
+      public void Can_write_to_a_generic_text_writer()
+      {
+         var buffer = new StringBuilder();
+         using(var writer = new StringWriter(buffer))
+         {
+            var p = new TemplateParser();
+            p.Compile<TestContext>("just write text", null, null, true)(context, new TextWriterOutputWriter(writer));
+         }
+         Assert.Equal("just write text", buffer.ToString());
+      }
+
+      [Fact]
+      public void Can_create_template_parser_without_any_directives()
+      {
+         var p = new TemplateParser(null); // causes none to be defined (incl. no defaults)
+         Assert.Equal("foobar", p.Replace("foobar", context));
+
+         // Try to use #if, it shouldn't work.
+         try
+         {
+            p.Replace("foobar $$#if b1$$ blah $$/if$$", context, except: false);
+            Assert.True(false);
+         }
+         catch (SyntaxException)
          {
             // OK
          }

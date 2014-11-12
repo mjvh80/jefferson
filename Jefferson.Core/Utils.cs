@@ -48,7 +48,7 @@ namespace Jefferson
 
       public static MethodInfo GetMethod(Expression<Action> action)
       {
-         Ensure.NotNull(action);
+         Ensure.NotNull(action, "action");
          var methodCall = action.Body as MethodCallExpression;
          if (methodCall == null) throw new InvalidOperationException("expected method call as body of given action");
          return methodCall.Method;
@@ -56,7 +56,7 @@ namespace Jefferson
 
       public static MethodInfo GetMethod<TArg>(Expression<Action<TArg>> action)
       {
-         Ensure.NotNull(action);
+         Ensure.NotNull(action, "action");
          var methodCall = action.Body as MethodCallExpression;
          if (methodCall == null) throw new InvalidOperationException("expected method call as body of given action");
          return methodCall.Method;
@@ -64,7 +64,7 @@ namespace Jefferson
 
       public static ConstructorInfo GetConstructor(Expression<Action> action)
       {
-         Ensure.NotNull(action);
+         Ensure.NotNull(action, "action");
          var newExpr = action.Body as NewExpression;
          if (newExpr == null) throw new InvalidOperationException("expected new object creation expression");
          return newExpr.Constructor;
@@ -75,7 +75,7 @@ namespace Jefferson
       /// </summary>
       public static Int32 MinNonNeg(IEnumerable<Int32> seq)
       {
-         Ensure.NotNull(seq);
+         Ensure.NotNull(seq, "seq");
          var nonZs = seq.Where(n => n >= 0);
          return nonZs.Any() ? nonZs.Min() : -1;
       }

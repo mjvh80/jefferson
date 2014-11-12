@@ -9,7 +9,7 @@ namespace Jefferson.Output
 
       public TextWriterOutputWriter(TextWriter writer)
       {
-         Ensure.NotNull(_mTarget);
+         Ensure.NotNull(writer, "writer");
          _mTarget = writer;
       }
 

@@ -46,28 +46,29 @@ namespace Jefferson
       public TemplateParser(params IDirective[] directives)
       {
          var reservedWords = new HashSet<String>();
-         _mDirectiveMap = new Dictionary<String, IDirective>(directives.Length);
-         foreach (var directive in directives.Where(d => d != null))
-         {
-            if (directive.Name == null) throw Utils.Error("Invalid directive: null name");
+         _mDirectiveMap = new Dictionary<String, IDirective>(directives == null ? 0 : directives.Length);
+         if (directives != null)
+            foreach (var directive in directives.Where(d => d != null))
+            {
+               if (directive.Name == null) throw Utils.Error("Invalid directive: null name");
 
-            if (!_sDirectiveNameExpr.IsMatch(directive.Name))
-               throw Utils.Error("Directive '{0}' contains invalid characters.");
+               if (!_sDirectiveNameExpr.IsMatch(directive.Name))
+                  throw Utils.Error("Directive '{0}' contains invalid characters.");
 
-            if (_mDirectiveMap.ContainsKey(directive.Name))
-               throw Utils.Error("Directive '{0}' already defined.", directive.Name);
+               if (_mDirectiveMap.ContainsKey(directive.Name))
+                  throw Utils.Error("Directive '{0}' already defined.", directive.Name);
 
-            if (reservedWords.Contains(directive.Name))
-               throw Utils.Error("Directive '{0}' clashes with a reserved word from another directive.", directive.Name);
+               if (reservedWords.Contains(directive.Name))
+                  throw Utils.Error("Directive '{0}' clashes with a reserved word from another directive.", directive.Name);
 
-            if (directive.ReservedWords != null && directive.ReservedWords.Any(k => _mDirectiveMap.ContainsKey(k)))
-               throw Utils.Error("A reserved word for directive '{0}' matches a directive that has already been registered.", directive.Name);
+               if (directive.ReservedWords != null && directive.ReservedWords.Any(k => _mDirectiveMap.ContainsKey(k)))
+                  throw Utils.Error("A reserved word for directive '{0}' matches a directive that has already been registered.", directive.Name);
 
-            if (directive.ReservedWords != null)
-               foreach (var word in directive.ReservedWords) reservedWords.Add(word);
+               if (directive.ReservedWords != null)
+                  foreach (var word in directive.ReservedWords) reservedWords.Add(word);
 
-            _mDirectiveMap.Add(directive.Name, directive);
-         }
+               _mDirectiveMap.Add(directive.Name, directive);
+            }
       }
 
       private readonly Dictionary<String, IDirective> _mDirectiveMap;
@@ -91,6 +92,8 @@ namespace Jefferson
       /// <param name="except">If false, the parser won't throw if a variable is not declared. The empty string is used then.</param>
       public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableDeclaration decls = null, Boolean except = false)
       {
+         Ensure.NotNull(source, "source");
+
          if (contextType == null) contextType = typeof(TContext);
 
          var ctx = new TemplateParserContext(source, except)
@@ -109,7 +112,8 @@ namespace Jefferson
       /// </summary>
       public String Replace(String source, Object context, Boolean except = false)
       {
-         Ensure.NotNull(context);
+         Ensure.NotNull(source, "source");
+         Ensure.NotNull(context, "context");
 
          var tree = Parse<Object>(source, context.GetType(), context as IVariableDeclaration, except);
          var buffer = new StringBuilder();
@@ -148,7 +152,8 @@ namespace Jefferson
       {
          public TemplateParserContext(String source, Boolean except)
          {
-            Ensure.NotNull(source);
+            Ensure.NotNull(source, "source");
+
             Source = source;
             ShouldThrow = except;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
@@ -186,7 +191,7 @@ namespace Jefferson
          /// </summary>
          public void PushScope(Type context, IVariableDeclaration variables = null)
          {
-            Ensure.NotNull(context); // variables may be null, i.e. no new variables introduced
+            Ensure.NotNull(context, "context"); // variables may be null, i.e. no new variables introduced
             ContextTypes.Add(context);
             ContextDeclarations.Add(variables);
          }
@@ -266,6 +271,8 @@ namespace Jefferson
          /// </summary>
          public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source)
          {
+            Ensure.NotNull(source, "source");
+
             var except = this.ShouldThrow;
             if (!(typeof(TContext).IsAssignableFrom(CurrentContextType)))
                throw Utils.InvalidOperation("Invalid Compile call, generic argument type '{0}' is not a baseclass for current context type '{1}'.", typeof(TContext).FullName, CurrentContextType.FullName);
@@ -377,6 +384,11 @@ namespace Jefferson
          /// </summary>
          public Int32 FindDirectiveEnd(String source, Int32 start, params String[] terminators)
          {
+            Ensure.NotNull(source, "source");
+
+            if (terminators == null || terminators.Length == 0)
+               return -1;
+
             // Find the next directive.
             // If we see something like #else it is not a directive because it doesn't have a matching /else.
             var nestedStartIdx = -1;
@@ -424,6 +436,8 @@ namespace Jefferson
 
          public CompiledExpression<Object, TOutput> EvaluateExpression<TOutput>(String expr, Boolean except)
          {
+            Ensure.NotNull(expr, "expr");
+
             var parser = new ExpressionParser<Object, TOutput>();
 
             // Parse the expression, compile it and run it.

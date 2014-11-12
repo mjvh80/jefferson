@@ -9,7 +9,7 @@ namespace Jefferson.Output
 
       public StringBuilderOutputWriter(StringBuilder target)
       {
-         Ensure.NotNull(target);
+         Ensure.NotNull(target, "target");
          _mStrBldr = target;
       }
 
