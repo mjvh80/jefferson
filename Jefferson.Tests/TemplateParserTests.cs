@@ -2,6 +2,7 @@
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -225,6 +226,18 @@ $$/if$$", context));
       }
 
       [Fact]
+      public void Can_handle_syntactic_edge_cases()
+      {
+         var p = new TemplateParser();
+
+         // Regular expression /if/.
+         var result = p.Replace("$$#if true$$ blah $$/if/$$ blah $$/if$$", context, except: true);
+         Assert.Equal(" blah if blah ", result);
+
+         Trace.WriteLine(result);
+      }
+
+      [Fact]
       public void Eeach_directive_works()
       {
          context.Foobars = new List<Foobar>
@@ -361,7 +374,7 @@ $$/each$$
             Assert.Equal("", replacer.Replace("$$FOOOOBAAAARRR$$", context, except: true));
             Assert.True(false, "expected exception due to undefined name");
          }
-         catch
+         catch(SyntaxException)
          {
             // OK
          }
