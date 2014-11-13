@@ -77,7 +77,7 @@ namespace Jefferson
       /// <summary>
       /// Convenience method. Calls Parse and compiles the resulting expression tree.
       /// </summary>
-      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableDeclaration decls = null, Boolean except = false)
+      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder decls = null, Boolean except = false)
       {
          return Parse<TContext>(source, contextType, decls, except).Compile();
       }
@@ -88,9 +88,9 @@ namespace Jefferson
       /// <typeparam name="TContext">The type of the input value. Note that if contextType != typeof(TContext) then contextType must be a subclass of the context.</typeparam>
       /// <param name="source">Source code in which occurrences of template markers are replaced.</param>
       /// <param name="contextType">The actual type of the input value.</param>
-      /// <param name="decls">Variable declartions, see <see cref="IVariableDeclaration"/></param>
+      /// <param name="decls">Variable declartions, see <see cref="IVariableBinder"/></param>
       /// <param name="except">If false, the parser won't throw if a variable is not declared. The empty string is used then.</param>
-      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableDeclaration decls = null, Boolean except = false)
+      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder decls = null, Boolean except = false)
       {
          Ensure.NotNull(source, "source");
 
@@ -99,7 +99,7 @@ namespace Jefferson
          var ctx = new TemplateParserContext(source, except)
          {
             ContextTypes = new List<Type> { contextType },
-            ContextDeclarations = new List<IVariableDeclaration> { decls },
+            ContextDeclarations = new List<IVariableBinder> { decls },
             DirectiveMap = _mDirectiveMap,
             PositionOffsets = new Stack<Int32>()
          };
@@ -115,7 +115,7 @@ namespace Jefferson
          Ensure.NotNull(source, "source");
          Ensure.NotNull(context, "context");
 
-         var tree = Parse<Object>(source, context.GetType(), context as IVariableDeclaration, except);
+         var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder, except);
          var buffer = new StringBuilder();
 
          tree.Compile()(context, new StringBuilderOutputWriter(buffer));
@@ -162,7 +162,7 @@ namespace Jefferson
          internal Dictionary<String, IDirective> DirectiveMap;
 
          internal List<Type> ContextTypes;
-         internal List<IVariableDeclaration> ContextDeclarations;
+         internal List<IVariableBinder> ContextDeclarations;
          internal Stack<Int32> PositionOffsets;
 
          /// <summary>
@@ -186,10 +186,18 @@ namespace Jefferson
          /// </summary>
          public readonly String Source;
 
+         public IVariableBinder ReplaceCurrentVariableBinder(IVariableBinder binder)
+         {
+            // note: binder may be null
+            var current = ContextDeclarations[ContextDeclarations.Count - 1];
+            ContextDeclarations[ContextDeclarations.Count - 1] = binder;
+            return current;
+         }
+
          /// <summary>
          /// Pushes a scope which is a Type for the current scope/context and variable declarations for this scope.
          /// </summary>
-         public void PushScope(Type context, IVariableDeclaration variables = null)
+         public void PushScope(Type context, IVariableBinder variables = null)
          {
             Ensure.NotNull(context, "context"); // variables may be null, i.e. no new variables introduced
             ContextTypes.Add(context);
@@ -218,7 +226,7 @@ namespace Jefferson
          /// <summary>
          /// Variable declarations belonging to the current context.
          /// </summary>
-         public IVariableDeclaration CurrentVariableDeclaration
+         public IVariableBinder CurrentVariableDeclaration
          {
             get { return ContextDeclarations[ContextTypes.Count - 1]; }
          }
@@ -498,23 +506,19 @@ namespace Jefferson
             }
 
             // Resolve up till root context.
-            for (var startContext = GetNthContext(startIndex); ; )
+            for (var currentContext = GetNthContext(startIndex); ; )
             {
-               var baseResolve = @base(startContext, name, typeName, null);
+               var baseResolve = @base(currentContext, name, typeName, null);
                if (baseResolve != null) return baseResolve;
 
                // See if a variable has been declared.
                var decls = ContextDeclarations[ContextDeclarations.Count - 1 - startIndex];
 
-               var varType = decls == null ? null : decls.GetType(name);
-               if (varType != null)
-               {
-                  var indexer = startContext.Type.GetProperty("Item");
-                  if (indexer == null)
-                     throw SyntaxException.Create("Context type '{0}' declares variables but provides no indexer to obtain them.", startContext.Type.FullName);
+               var variableBinding = decls == null ? null : decls.BindVariable(currentContext, name); //varType decls.GetType(name);
 
-                  return Expression.Convert(Expression.MakeIndex(startContext, indexer, new[] { Expression.Constant(name) }), varType);
-               }
+               // todo: validate resulting type?
+               if (variableBinding != null)
+                  return variableBinding;
 
                startIndex += 1;
                if (startIndex == ContextTypes.Count) break;

@@ -1,4 +1,5 @@
-﻿using Jefferson.Directives;
+﻿using Jefferson.Binders;
+using Jefferson.Directives;
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
@@ -24,9 +25,15 @@ namespace Jefferson.Tests
       }
    }
 
-   public class TestContext : IVariableDeclaration
+   public class TestContext : IndexerVariableBinder
    {
-      public TestContext() { }
+      private Dictionary<String, Func<Object>> _mVariables = new Dictionary<String, Func<Object>>();
+      private Dictionary<String, Type> _mTypes; // = new Dictionary<String, Type>();
+
+      public TestContext() : base(new Dictionary<String, Type>())
+      {
+         _mTypes = (Dictionary<String, Type>)base.mTypeDeclarations;
+      }
 
       public String GetRecursive()
       {
@@ -78,8 +85,6 @@ namespace Jefferson.Tests
             _mTypes.Add(variable, type);
       }
 
-      private Dictionary<String, Func<Object>> _mVariables = new Dictionary<String, Func<Object>>();
-      private Dictionary<String, Type> _mTypes = new Dictionary<String, Type>();
       public Object this[String name] { get { return _mVariables[name](); } }
 
       public Type GetType(String variable)
@@ -223,6 +228,21 @@ $$/if$$", context));
 
 7:   $$#elif 
      ^ (3)", error);
+      }
+
+      [Fact]
+      public void Let_directives_work()
+      {
+         var p = new TemplateParser(new LetDirective());
+         var result = p.Replace(
+@"Before: $$b1$$
+$$#let b1 = 'foo'$$
+  Now I have $$b1$$.
+$$/let$$
+And after: $$b1$$.
+", context);
+
+         Trace.WriteLine(result);
       }
 
       [Fact]

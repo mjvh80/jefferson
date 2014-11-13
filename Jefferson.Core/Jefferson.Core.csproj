@@ -39,14 +39,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Binders\IndexerVariableBinder.cs" />
     <Compile Include="Directives\EachDirective.cs" />
     <Compile Include="Directives\IDirective.cs" />
     <Compile Include="Directives\IfDirective.cs" />
+    <Compile Include="Directives\LetDirective.cs" />
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Output\IOutputWriter.cs" />
-    <Compile Include="IVariableDeclaration.cs" />
+    <Compile Include="IVariableBinder.cs" />
     <Compile Include="Output\StringBuilderOutputWriter.cs" />
     <Compile Include="Output\TextWriterOutputWriter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

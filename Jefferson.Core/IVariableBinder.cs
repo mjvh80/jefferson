@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Jefferson.Parsing;
+using System;
+using System.Linq.Expressions;
 
 namespace Jefferson
 {
@@ -13,11 +15,8 @@ namespace Jefferson
    /// ]]>
    /// Nested scopes, such as those created by $$#each$$ may themselves support variable declarations in that scope.
    /// </summary>
-   public interface IVariableDeclaration
+   public interface IVariableBinder
    {
-      /// <summary>
-      /// Return the Type for the given variable.
-      /// </summary>
-      Type GetType(String variable);
+      Expression BindVariable(Expression currentContext, String name);
    }
 }
