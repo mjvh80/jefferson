@@ -4,7 +4,6 @@ using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
-#if true
    public class LetDirective : IDirective
    {
       public String Name
@@ -22,23 +21,35 @@ namespace Jefferson.Directives
 
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
-         var variables = arguments.Split(_sVarSplit, StringSplitOptions.RemoveEmptyEntries);
-
          // Compile variables.
-         var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>(variables.Length);
-         foreach (var var in variables)
-         {
-            var pair = var.Split(_sNameValueSplit, StringSplitOptions.RemoveEmptyEntries);
-            var name = pair[0].Trim();
-            var value = pair[1].Trim(); // < make this indexoffirst as = may appear in an expression
+         var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
 
-            // todo: validate
+         for (var startIdx = 0; ; )
+         {
+            var varSepIdx = arguments.IndexOf(';', startIdx);
+
+            var bindingLen = (varSepIdx < 0 ? arguments.Length : varSepIdx) - startIdx;
+            if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
+
+            var binding = arguments.Substring(startIdx, bindingLen);
+
+            var eqIdx = binding.IndexOf('=');
+            if (eqIdx < 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding: missing '='.");
+
+            var name = binding.Substring(0, eqIdx).Trim();
+            if (!ExpressionParser<Object, Object>.IsValidName(name))
+               throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
+
+            var value = binding.Substring(eqIdx + 1).Trim();
 
             compiledVars.Add(name, parserContext.EvaluateExpression<Object>(value, parserContext.ShouldThrow));
+
+            if (varSepIdx < 0) break;
+            startIdx = varSepIdx + 1;
          }
 
          // Declare them as ParameterExpressions.
-         var declaredVars = new Dictionary<String, ParameterExpression>(variables.Length);
+         var declaredVars = new Dictionary<String, ParameterExpression>(compiledVars.Count);
          var currentContext = parserContext.GetNthContext(0);
 
          foreach (var kvp in compiledVars)
@@ -46,7 +57,7 @@ namespace Jefferson.Directives
             declaredVars.Add(kvp.Key, Expression.Variable(kvp.Value.OutputType, kvp.Key));
          }
 
-         var body = new List<Expression>(variables.Length + 1);
+         var body = new List<Expression>(compiledVars.Count + 1);
 
          // Add assignment expressions to the body.
          foreach (var kvp in declaredVars)
@@ -90,5 +101,4 @@ namespace Jefferson.Directives
          }
       }
    }
-#endif
 }

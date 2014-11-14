@@ -923,6 +923,7 @@ namespace Jefferson
             if (i < expr.Length && Char.IsNumber(expr[i])) throwExpected("name which cannot start with a number");
 
             // NOTE: we allow $ here, C# does not.
+            // This code should match IsValidName below.
             return advanceWhile(() => Char.IsLetter(expr[i]) || Char.IsNumber(expr[i]) || expr[i] == '_' || expr[i] == '$');
          };
 
@@ -982,6 +983,15 @@ namespace Jefferson
          {
             throw SyntaxException.Create(e, expr, "Unexpected error occurred parsing or compiling expression");
          }
+      }
+
+      // *NOTE* This code must match the parser above
+      // todo: calling this isn't nice because the generic arguments are required for the call but not actually needed. Move somewhere else.
+      public static Boolean IsValidName(String name)
+      {
+         if (String.IsNullOrEmpty(name)) return false;
+         if (Char.IsNumber(name[0])) return false;
+         return name.All(c => Char.IsNumber(c) || Char.IsLetter(c) || c == '_' || c == '$');
       }
 
       internal class _ExpressionDebugContext

@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -218,6 +219,16 @@ namespace Jefferson.Tests
          Assert.True(func(new ActualContext()));
 
          TestUtils.AssertThrows(() => func(new Context()));
+      }
+
+      [Theory]
+      [InlineData("valid", true)]
+      [InlineData(null, false), InlineData("", false), InlineData(" ", false), InlineData("\t", false), InlineData("\n", false)]
+      [InlineData("1foo", false), InlineData("1", false)]
+      [InlineData("foobar", true), InlineData("$foobar", true), InlineData("_foobar", true), InlineData("foo_bar$e", true)]
+      public void IsValidName_works(String name, Boolean isValid)
+      {
+         Assert.Equal(isValid, ExpressionParser<Object, Object>.IsValidName(name));
       }
 
       [Fact]

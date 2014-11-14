@@ -246,6 +246,31 @@ And after: $$b1$$.
       }
 
       [Fact]
+      public void Block_directives_work()
+      {
+         var p = new TemplateParser(new LetDirective(), new BlockDirective());
+         var result = p.Replace(
+@"
+$$#let b1 = 'test'$$
+   Can't get parent b1: ($$b1$$).
+$$/let$$
+", context);
+
+         Trace.WriteLine(result);
+
+         result = p.Replace(
+@"
+$$#block$$
+$$#let b1 = 'test'$$
+   Can't get parent b1: ($$b1$$), now I can: ($$ $1.b1 $$).
+$$/let$$
+$$/block$$
+", context);
+
+         Trace.WriteLine(result);
+      }
+
+      [Fact]
       public void Can_handle_syntactic_edge_cases()
       {
          var p = new TemplateParser();
