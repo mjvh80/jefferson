@@ -30,8 +30,10 @@ but as output is abstracted through an `IOutputWriter` (and one that implements 
 * expressions are simple (but powerful), so we stop at assignment, in fact `=` is an alias for `==`
 * expression syntax follows C# but extends this, e.g. it adds a Perl like regex match `=~`, "overloads" `&&` with `and` (as this is much nicer to use from xml) and more
 * if anything more complex is required, add a method to the context class (aka the model)
+* expressions are type safe
+* errors are descriptive, helpful and provide accurate source location information
 
-## Supported expression syntax
+## Supported expression and template syntax
 Some of the following is supported (list not exhaustive):
 * arithmetic
 * boolean operators
@@ -40,6 +42,74 @@ Some of the following is supported (list not exhaustive):
 * regex support `=~` and `!~` and `/regex/`
 * method calls (no fancy overload resolution, however, at the moment)
 * indexers (currently restricted to single argument indexers)
+
+In template expressions the *namespaces* `$x` where `x` is a digit can be used to move up the "scope chain". Here `$0 == this`, `$1` is the parent scope etc. Note that whenever any name `foo` is resolved the context/scope chain is always walked from current to top level until a binding is found. If that is not possible an error is thrown *unless* the `except` argument was set to `false` in which case it evaluates to the empty string `""`.
+
+## Supported Directives
+
+### `$$#if$$`
+The if directive can be used for conditional output. If the given expression evaluates to true its contents are output. Otherwise if there is an elif statement or an else statement these are executed and otherwise nothing is output.
+
+Syntax is
+
+```
+$$#if <expr>$$
+   ...
+$$#elif <expr>$$
+   ...
+$$#else$$
+   ...
+$$/if$$
+```
+
+Here `$$#else` is optional, and `$$#elif$$` can occur 0 or more times. `<expr>` denotes a usual expression evaluated against the current context/scope to a Boolean value.
+
+The if directive does not introduce a new scope.
+
+### `$$#each$$`
+The each directive can be used to iterate over an enumerable collection after which each object of the collection becomes the current scope. It's syntax is
+
+```
+$$#each$$
+   <exprA>
+$$#else$$
+   <exprB>
+$$/each$$
+```
+
+Here, again, the `$$#else$$` is optional. The `$$#else$$` clause is only executed if the enumerable is empty. Note that `each` introduces a new scope, namely the current object of the enumerator. This means that `<exprA>` is evaluated in a different context/scope than `<exprB>`.
+
+### `$$#block$$`
+The block directive does very little, it simply introduces a new scope. See the `$$#let$$` directive for an example of how this may be useful.
+Syntax:
+```
+$$#block$$
+   ...
+$$/block$$
+```
+
+### `$$#let$$`
+The let directive can be used to bind names to values.
+
+Syntax is:
+
+```
+$$#let varA = exprA; varB = exprB; ... $$
+   ...
+$$/let$$
+```
+
+The expressions are evaluated within the current scope. Note that the let directive does **not** introduce a new scope itself. This means it is not possible to access a variable in the current scope that has been bound to a new value using a let expression. There is, however, a way to work around this by using a `$$#block$$` expression.
+
+```
+$$#block$$
+   $$#let varA = $1.Foobar$$
+      ...
+   $$/let$$
+$$/block$$
+```
+Note the use of the `$1` namespace to access the parent scope here.
+
 
 FAQ
 ===
