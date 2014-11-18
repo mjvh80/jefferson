@@ -44,7 +44,7 @@ Some of the following is supported (list not exhaustive):
 * method calls (no fancy overload resolution, however, at the moment)
 * indexers (currently restricted to single argument indexers)
 
-In template expressions the *namespaces* `$x` where `x` is a digit can be used to move up the "scope chain". Here `$0 == this`, `$1` is the parent scope etc. Note that whenever any name `foo` is resolved the context/scope chain is always walked from current to top level until a binding is found. If that is not possible an error is thrown *unless* the `except` argument was set to `false` in which case it evaluates to the empty string `""`.
+In template expressions the *namespaces* `$x` where `x` is a digit can be used to move up the "scope chain". Here `$0 == this`, `$1` is the parent scope etc. Note that whenever any name `foo` is resolved the context/scope chain is always walked from current to top level until a binding is found. If that is not possible an error is thrown.
 
 ## Supported Directives
 
