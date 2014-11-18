@@ -1,0 +1,27 @@
+﻿
+On resolving names.
+
+It is harder than it may look, but the current way that names are resolved is:
+
+- once a value has been determined (e.g. a in a.b) all further property access, method calls etc. is done against that object
+  without any custom resolution.
+- "bare" names, i.e. unqualified names are resolved by first asking a custom resolver to resolve it and then invoking the standard
+  ".net like" resolver
+- qualified names (e.g. a.b.c) are resolved by going right to left (i.e. specific to non-specific).
+
+Thus if a custom resolver resolves a name a.b.c, .b is not a property access on a.
+
+Some edge cases to consider:
+
+- we are resolving against an implicit context, aka "this". However, it is possible that this context is also returned through an expression
+  which could be as simple as
+
+   Object foo(Object o) { return o; }
+
+  As we cannot know, at compile time, this is the same object, it makes sense not to call custom resolvers on things like
+  "foo(this).x" to resolve x, say.
+
+- we don't support calling static methods at the moment (probably never)
+- most edge cases can be worked around by calling indexers directly, say, or simply by adding another method to a context class
+- default values for unresolved names are (no longer) supported. We could re-introduce this, but I think the empty string was a little weird anyway
+  because it's not obvious that "string" should always be the default type.

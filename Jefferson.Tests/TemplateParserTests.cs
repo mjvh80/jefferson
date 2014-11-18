@@ -3,7 +3,6 @@ using Jefferson.Directives;
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -30,7 +29,8 @@ namespace Jefferson.Tests
       private Dictionary<String, Func<Object>> _mVariables = new Dictionary<String, Func<Object>>();
       private Dictionary<String, Type> _mTypes; // = new Dictionary<String, Type>();
 
-      public TestContext() : base(new Dictionary<String, Type>())
+      public TestContext()
+         : base(new Dictionary<String, Type>())
       {
          _mTypes = (Dictionary<String, Type>)base.mTypeDeclarations;
       }
@@ -44,6 +44,8 @@ namespace Jefferson.Tests
       {
          return "$$GetLoop()$$";
       }
+
+      public String FieldOnCtx = "fldOnCtx";
 
       public IEnumerable<Foobar> Foobars;
 
@@ -242,7 +244,7 @@ $$/let$$
 And after: $$b1$$.
 ", context);
 
-         Trace.WriteLine(result);
+         // Trace.WriteLine(result);
       }
 
       [Fact]
@@ -256,7 +258,7 @@ $$#let b1 = 'test'$$
 $$/let$$
 ", context);
 
-         Trace.WriteLine(result);
+         // Trace.WriteLine(result);
 
          result = p.Replace(
 @"
@@ -267,7 +269,7 @@ $$/let$$
 $$/block$$
 ", context);
 
-         Trace.WriteLine(result);
+         // Trace.WriteLine(result);
       }
 
       [Fact]
@@ -276,10 +278,10 @@ $$/block$$
          var p = new TemplateParser();
 
          // Regular expression /if/.
-         var result = p.Replace("$$#if true$$ blah $$/if/$$ blah $$/if$$", context, except: true);
+         var result = p.Replace("$$#if true$$ blah $$/if/$$ blah $$/if$$", context);
          Assert.Equal(" blah if blah ", result);
 
-         Trace.WriteLine(result);
+         // Trace.WriteLine(result);
       }
 
       [Fact]
@@ -323,7 +325,7 @@ done
 @"
 Foo:
 $$#each EmptyStrAr $$
-- got $$Bazzy$$, parent: $$ $1.foobar $$
+- got $$ this $$, parent: $$ $1.foobar $$
 $$#else$$
 WOOHOO here $$foobar$$
 $$/each$$
@@ -411,17 +413,18 @@ $$/each$$
       public void Can_handle_bad_expressions()
       {
          // Unknown names resolve to empty strings.
-         Assert.Equal("", replacer.Replace("$$FOOOOBAAAARRR$$", context));
-
-         // Now expect an exception.
          try
          {
-            Assert.Equal("", replacer.Replace("$$FOOOOBAAAARRR$$", context, except: true));
-            Assert.True(false, "expected exception due to undefined name");
+            replacer.Replace("$$FOOOOBAAAARRR$$", context);
+            Assert.True(false, "expected error due to unresolved name");
          }
-         catch(SyntaxException)
+         catch (SyntaxException e)
          {
-            // OK
+            Assert.Equal(
+  @"Expected known name, could not resolve 'FOOOOBAAAARRR'
+
+1: FOOOOBAAAARRR
+                ^ (14)", e.Message);
          }
       }
 
@@ -436,7 +439,7 @@ $$/each$$
          var repl2 = new TemplateParser();
          var customCtx = new CustomVarContext();
 
-         Assert.Equal("Hello foobar world!", repl2.Replace("Hello $$foobar$$ world!", customCtx, except: true));
+         Assert.Equal("Hello foobar world!", repl2.Replace("Hello $$foobar$$ world!", customCtx));
 
          // todo: more testing
       }
@@ -511,10 +514,10 @@ $$/each$$
       public void Can_write_to_a_generic_text_writer()
       {
          var buffer = new StringBuilder();
-         using(var writer = new StringWriter(buffer))
+         using (var writer = new StringWriter(buffer))
          {
             var p = new TemplateParser();
-            p.Compile<TestContext>("just write text", null, null, true)(context, new TextWriterOutputWriter(writer));
+            p.Compile<TestContext>("just write text", null, null)(context, new TextWriterOutputWriter(writer));
          }
          Assert.Equal("just write text", buffer.ToString());
       }
@@ -528,7 +531,7 @@ $$/each$$
          // Try to use #if, it shouldn't work.
          try
          {
-            p.Replace("foobar $$#if b1$$ blah $$/if$$", context, except: false);
+            p.Replace("foobar $$#if b1$$ blah $$/if$$", context);
             Assert.True(false);
          }
          catch (SyntaxException)
@@ -551,12 +554,35 @@ $$/each$$
          try
          {
             var p = new TemplateParser(customDirective);
-            p.Replace(source, context, true);
+            p.Replace(source, context);
          }
          catch (Exception e)
          {
             Assert.Equal("throw worked", e.Message);
          }
+      }
+
+      [Fact]
+      public void Custom_value_filters_work()
+      {
+         var values = new StringBuilder();
+
+         var p = new TemplateParser();
+         p.ValueFilter = (s, o) =>
+         {
+            values.AppendFormat("Var '{0}' resolved to '{1}'.", s, o).AppendLine();
+            return o;
+         };
+
+         var ignoredOutput = p.Replace("$$ b1 $$ and blah $$ FieldOnCtx $$.", context);
+
+         // Note: that FieldOnCtx name is *not* part of the output here.
+         Assert.Equal(
+@"Var 'b1' resolved to 'True'.
+Var 'FieldOnCtx' resolved to 'fldOnCtx'.
+", values.ToString());
+
+         // Trace.WriteLine(values.ToString());
       }
    }
 }

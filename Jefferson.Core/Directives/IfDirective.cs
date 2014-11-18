@@ -20,7 +20,6 @@ namespace Jefferson.Directives
       public Expression Compile(TemplateParserContext parserCtx, String args, String source)
       {
          var idx = 0;
-         var except = parserCtx.ShouldThrow;
          var contextParamAsObj = Expression.Convert(parserCtx.GetNthContext(0), typeof(Object));
 
          var endIfIdx = -1;
@@ -51,7 +50,7 @@ namespace Jefferson.Directives
             var contents = source.Substring(closeIdx, endIfIdx - closeIdx);
             var compiledContents = parserCtx.Parse<Object>(contents);
 
-            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(parserCtx.EvaluateExpression<Boolean>(expr, except).Ast, contextParamAsObj),
+            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(parserCtx.EvaluateExpression<Boolean>(expr).Ast, contextParamAsObj),
                                                             Expression.Invoke(compiledContents, contextParamAsObj, parserCtx.Output)));
 
             if (endIfIdx == source.Length)

@@ -186,10 +186,12 @@ namespace Jefferson.Tests
          var c = p.ParseExpression("IncludeFile(JoinPath(APPROOT.ToString(), 'site\\packages.config'))", (@this, n, tn, def) =>
          {
             // Test: always return something not-null (as-if resolved dynamically at run-time).
+            if (tn != null) return def(@this, n, tn, null);
             return Expression.Constant("Foobar");
          });
 
-         Assert.Equal(@"C:\foo\bar\site\packages.config", c(new Context()));
+         // As our resolver takes precendence.
+         Assert.Equal(@"Foobar\site\packages.config", c(new Context()));
       }
 
       [Fact]

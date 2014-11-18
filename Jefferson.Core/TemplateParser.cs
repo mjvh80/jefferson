@@ -77,9 +77,9 @@ namespace Jefferson
       /// <summary>
       /// Convenience method. Calls Parse and compiles the resulting expression tree.
       /// </summary>
-      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder decls = null, Boolean except = false)
+      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
       {
-         return Parse<TContext>(source, contextType, decls, except).Compile();
+         return Parse<TContext>(source, contextType, decls).Compile();
       }
 
       /// <summary>
@@ -90,18 +90,20 @@ namespace Jefferson
       /// <param name="contextType">The actual type of the input value.</param>
       /// <param name="decls">Variable declartions, see <see cref="IVariableBinder"/></param>
       /// <param name="except">If false, the parser won't throw if a variable is not declared. The empty string is used then.</param>
-      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder decls = null, Boolean except = false)
+      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
       {
          Ensure.NotNull(source, "source");
 
          if (contextType == null) contextType = typeof(TContext);
 
-         var ctx = new TemplateParserContext(source, except)
+         var ctx = new TemplateParserContext(source)
          {
             ContextTypes = new List<Type> { contextType },
             ContextDeclarations = new List<IVariableBinder> { decls },
             DirectiveMap = _mDirectiveMap,
-            PositionOffsets = new Stack<Int32>()
+            PositionOffsets = new Stack<Int32>(),
+            UserProvidedValueFilter = ValueFilter,
+            UserProvidedOutputFilter = OutputFilter
          };
 
          return ctx.Parse<TContext>(source);
@@ -110,12 +112,12 @@ namespace Jefferson
       /// <summary>
       /// Compiles and runs the given source and input context. In effect this interprets the source codes rather than compiling it.
       /// </summary>
-      public String Replace(String source, Object context, Boolean except = false)
+      public String Replace(String source, Object context)
       {
          Ensure.NotNull(source, "source");
          Ensure.NotNull(context, "context");
 
-         var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder, except);
+         var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
          var buffer = new StringBuilder();
 
          tree.Compile()(context, new StringBuilderOutputWriter(buffer));
@@ -125,7 +127,7 @@ namespace Jefferson
       /// <summary>
       /// Keeps replacing expressions until none found.
       /// </summary>
-      public String ReplaceDeep(String source, Object context, Boolean except = false)
+      public String ReplaceDeep(String source, Object context)
       {
          var loop = 1;
          do
@@ -134,13 +136,36 @@ namespace Jefferson
             if (loop > 1000) // say
                throw Utils.Error("Possible loop detected in ReplaceDeep, stopping after 1000 iterations.");
 
-            source = Replace(source, context, except);
+            source = Replace(source, context);
             loop += 1;
          }
          while (source.IndexOf("$$") >= 0);
 
          return source;
       }
+
+      // Todo, this does not work, needs a little refactoring around runtime contexts.
+      internal Object EvaluateExpression(String expr, Object context)
+      {
+         Ensure.NotNull(expr, "expr");
+         Ensure.NotNull(context, "context");
+
+         var ctx = new TemplateParserContext("")
+         {
+            ContextTypes = new List<Type> { context.GetType() },
+            ContextDeclarations = new List<IVariableBinder> { context as IVariableBinder },
+            PositionOffsets = new Stack<Int32>(), // < todo to ctor?
+            UserProvidedValueFilter = ValueFilter,
+            UserProvidedOutputFilter = OutputFilter
+         };
+
+         return ctx.EvaluateExpression<Object>(expr);
+      }
+
+      public Func<String, Object, Object> ValueFilter { get; set; }
+
+      // todo: is this useful? Perhaps for standard output encoding?
+      private Func<String, String> OutputFilter { get; set; }
    }
 
    namespace Parsing
@@ -150,12 +175,11 @@ namespace Jefferson
       /// </summary>
       public class TemplateParserContext
       {
-         public TemplateParserContext(String source, Boolean except)
+         public TemplateParserContext(String source)
          {
             Ensure.NotNull(source, "source");
 
             Source = source;
-            ShouldThrow = except;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
          }
 
@@ -164,6 +188,9 @@ namespace Jefferson
          internal List<Type> ContextTypes;
          internal List<IVariableBinder> ContextDeclarations;
          internal Stack<Int32> PositionOffsets;
+
+         internal Func<String, Object, Object> UserProvidedValueFilter;
+         internal Func<String, String> UserProvidedOutputFilter;
 
          /// <summary>
          /// Represents the runtime List&lt;Object&gt;, the stack of current contexts (or scopes).
@@ -175,11 +202,6 @@ namespace Jefferson
          /// The parameter representing an instance of <see cref="IOutputWriter"/> used for output.
          /// </summary>
          public ParameterExpression Output { get; private set; }
-
-         /// <summary>
-         /// Set to true if the except parameter of Parse was set to true, and vice versa.
-         /// </summary>
-         public readonly Boolean ShouldThrow;
 
          /// <summary>
          /// The global source being parsed.
@@ -281,7 +303,6 @@ namespace Jefferson
          {
             Ensure.NotNull(source, "source");
 
-            var except = this.ShouldThrow;
             if (!(typeof(TContext).IsAssignableFrom(CurrentContextType)))
                throw Utils.InvalidOperation("Invalid Compile call, generic argument type '{0}' is not a baseclass for current context type '{1}'.", typeof(TContext).FullName, CurrentContextType.FullName);
 
@@ -362,7 +383,7 @@ namespace Jefferson
 
                if (expression != null)
                {
-                  var compExpr = EvaluateExpression<Object>(expression, except).Ast;
+                  var compExpr = EvaluateExpression<Object>(expression).Ast;
 
                   // Convert the object result to string. Todo: add a Write(Object) method instead?
                   bodyStmts.Add(Expression.Call(outputParam, Utils.GetMethod<IOutputWriter>(sb => sb.Write(null)),
@@ -442,7 +463,7 @@ namespace Jefferson
             return FindDirectiveEnd(source, nestedAfterEndIdx, terminators);
          }
 
-         public CompiledExpression<Object, TOutput> EvaluateExpression<TOutput>(String expr, Boolean except)
+         public CompiledExpression<Object, TOutput> EvaluateExpression<TOutput>(String expr)
          {
             Ensure.NotNull(expr, "expr");
 
@@ -450,7 +471,7 @@ namespace Jefferson
 
             // Parse the expression, compile it and run it.
             // todo: flags
-            return parser._ParseExpressionInternal(expr, ResolveName, ExpressionParsingFlags.IgnoreCase, this.CurrentContextType);
+            return parser._ParseExpressionInternal(expr, ResolveName, ExpressionParsingFlags.IgnoreCase, this.CurrentContextType, this.UserProvidedValueFilter);
          }
 
          private static readonly Regex _sParentExpr = new Regex(@"^\$\d+$");
@@ -484,7 +505,7 @@ namespace Jefferson
             If the name $0.x is seen, normal resolution will attempt to find $0, which should fail in general (invalid C# identifier).
             We then attempt resolution with typename = $0 and name = x. This is then resolved against the correct context depending on n in $n, chaining as expected.
          */
-         private Expression ResolveName(Expression thisExpr, String name, String typeName, NameResolverDelegate @base)
+         private Expression ResolveName(Expression thisExpr, String name, String typeName, NameResolverDelegate defaultResolver)
          {
             Utils.DebugAssert(thisExpr.Type == GetNthContext(0).Type);
 
@@ -501,14 +522,14 @@ namespace Jefferson
                      throw SyntaxException.Create("Invalid parent context '{0}': number of contexts in chain is {1}", typeName, ContextTypes.Count.ToStringInvariant());
                }
                else
-                  // Default lookup.
-                  return @base(thisExpr, name, typeName, @base);
+                  // Anything else of the form a.b.c we don't resolve here.
+                  return defaultResolver(thisExpr, name, typeName, null);
             }
 
             // Resolve up till root context.
             for (var currentContext = GetNthContext(startIndex); ; )
             {
-               var baseResolve = @base(currentContext, name, typeName, null);
+               var baseResolve = defaultResolver(currentContext, name, typeName, null);
                if (baseResolve != null) return baseResolve;
 
                // See if a variable has been declared.
@@ -524,9 +545,7 @@ namespace Jefferson
                if (startIndex == ContextTypes.Count) break;
             }
 
-            // If here, cannot resolve value.
-            if (ShouldThrow) return null;
-            else return Expression.Constant(""); // default empty string value
+            return defaultResolver(thisExpr, name, typeName, null);
          }
       }
    }

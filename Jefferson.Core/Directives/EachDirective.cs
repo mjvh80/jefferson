@@ -21,8 +21,6 @@ namespace Jefferson.Directives
 
       public Expression Compile(TemplateParserContext parserCtx, String args, String source)
       {
-         var except = parserCtx.ShouldThrow;
-
          var closeIdx = 0;
 
          var endIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else$$");
@@ -38,7 +36,7 @@ namespace Jefferson.Directives
             empty = source.Substring(ifClose, endIdx - ifClose);
          }
 
-         var compiledEachExpr = parserCtx.EvaluateExpression<IEnumerable<Object>>(args, except);
+         var compiledEachExpr = parserCtx.EvaluateExpression<IEnumerable<Object>>(args);
 
          // Compile else, but against the *current* context.
          var compiledEachEmpty = empty == null ? (Expression)Expression.Constant(null, typeof(Action<Object, IOutputWriter>)) : parserCtx.Parse<Object>(empty);

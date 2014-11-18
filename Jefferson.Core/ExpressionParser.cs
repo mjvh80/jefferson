@@ -281,7 +281,7 @@ namespace Jefferson
       //             ( numberExpr ) |
       //             ( true ) | ( false ) | ( null ) |
       //             ( identifierExpr )
-      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
       {
          #region Parser
 
@@ -300,12 +300,31 @@ namespace Jefferson
 
          Int32 i = 0;
 
-         var contextExpr = Expression.Parameter(typeof(TContext), "context");
-         var actualContextExpr = Expression.Convert(contextExpr, actualContextType); // just cast to the derived context type
 
          var defaultResolver = _GetDefaultNameResolver(flags);
          if (nameResolver == null)  // Default: get a property or field by the given name.
             nameResolver = defaultResolver;
+
+         var contextExpr = Expression.Parameter(typeof(TContext), "context");
+         var actualContextExpr = Expression.Convert(contextExpr, actualContextType); // just cast to the derived context type
+
+         if (valueFilter != null)
+         {
+            // Wrap the resolver using the filter.
+            var currentResolver = nameResolver;
+            nameResolver = (Expression thisExpr, String name, String typeName, NameResolverDelegate @base) =>
+            {
+               var result = currentResolver(thisExpr, name, typeName, @base);
+               if (result == null) return null;
+
+               var fullName = typeName == null ? name : typeName + "." + name;
+               var type = result.Type;
+
+               // Call the custom hook, but ensure that we don't lose our type.
+               return Expression.Convert(Expression.Invoke(Expression.Constant(valueFilter), Expression.Constant(fullName), Expression.Convert(result, typeof(Object))),
+                                         type);
+            };
+         }
 
          #region Parsing Utilities
 
@@ -593,22 +612,12 @@ namespace Jefferson
                   var parts = identifier.Split('.');
                   var periodsLeft = 0;
 
-                  // We must do this with the default resolver, names against the context go first. Otherwise we cannot distinguish from dynamic
-                  // (at runtime) resolution which would (e.g.) involve returning a method call here (never null).
-                  result = defaultResolver(actualContextExpr, parts[0], null, null);
-                  if (result != null)
+                  // The first part of the qualified name is not a member access. Thus we resolve it from right to left (most specific to least specific).
+                  for (var j = parts.Length - 1; j >= 0; j--)
                   {
-                     periodsLeft = parts.Length - 1;
-                  }
-                  else
-                  {
-                     // The first part of the qualified name is not a member access. Thus we resolve it from right to left (most specific to least specific).
-                     for (var j = parts.Length - 1; j >= 0; j--)
-                     {
-                        result = nameResolver(actualContextExpr, parts[j], j == 0 ? null : String.Join(".", parts, 0, j), defaultResolver);
-                        if (result == null) continue;
-                        periodsLeft = parts.Length - j - 1; break;
-                     }
+                     result = nameResolver(actualContextExpr, parts[j], j == 0 ? null : String.Join(".", parts, 0, j), defaultResolver);
+                     if (result == null) continue;
+                     periodsLeft = parts.Length - j - 1; break;
                   }
 
                   // Backtrack for continued parsing below.
@@ -625,7 +634,7 @@ namespace Jefferson
                {
                   // Simple name without periods, but not a method call.
                   // See above, because the default resolver is used for qualified names first we must try that first in order to be consistent.
-                  result = defaultResolver(actualContextExpr, identifier, null, null) ?? nameResolver(actualContextExpr, identifier, null, defaultResolver);
+                  result = nameResolver(actualContextExpr, identifier, null, defaultResolver);
                   if (result == null) throwExpected("known name, could not resolve '{0}'", identifier);
                   identifier = "";
                }
@@ -647,7 +656,10 @@ namespace Jefferson
                   if (i < expr.Length && expr[i] == '(')
                      continue; // let method call handle this
 
-                  result = nameResolver(result, identifier, null, defaultResolver);
+                  // We consider the . operator to imply property or field access.
+                  // Allowing for custom resolving here gives strange edge cases (e.g. what if the instance
+                  // is a context, it is not possible to tell at compile time).
+                  result = defaultResolver(result, identifier, null, defaultResolver);
                   identifier = "";
                }
                else if (advanceIfMatch("\\[")) // array accessor
@@ -703,7 +715,11 @@ namespace Jefferson
                      }
 
                      // Now we know the name is not a method, we can resolve it to a delegate.
-                     result = nameResolver(methodTarget, identifier, null, defaultResolver);
+                     if (result is _IdentifierExpression)
+                        result = nameResolver(methodTarget, identifier, null, defaultResolver);
+                     else
+                        result = defaultResolver(methodTarget, identifier, null, defaultResolver);
+
                      if (result == null) throwExpected("name resolving to a delegate ('{0}' did not resolve or value is not a delegate) - note that method arguments must be of the correct type and are *not* coerced currently", identifier);
                   }
 
@@ -979,6 +995,7 @@ namespace Jefferson
                OutputType = bodyType
             };
          }
+         catch (SyntaxException) { throw; }
          catch (Exception e)
          {
             throw SyntaxException.Create(e, expr, "Unexpected error occurred parsing or compiling expression");
