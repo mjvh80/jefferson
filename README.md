@@ -32,6 +32,7 @@ but as output is abstracted through an `IOutputWriter` (and one that implements 
 * if anything more complex is required, add a method to the context class (aka the model)
 * expressions are type safe
 * errors are descriptive, helpful and provide accurate source location information
+* the focus is runtime performance not compile performance
 
 ## Supported expression and template syntax
 Some of the following is supported (list not exhaustive):
@@ -118,7 +119,10 @@ FAQ
 I'm not a believer in creationism, this evolved from more humble beginnings.
 
 #### Is it fast?
-Probably, it's compiled using Linq expression trees, but I have done no formal testing as yet.
+It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance.
+
+#### Is the API stable?
+No. This is just an initial version and the API may change. In particular the area of how names are resolved is likely to be updated. So I don't guarantee any backwards compatibility at the moment.
 
 #### Is it type safe?
 Yes.
