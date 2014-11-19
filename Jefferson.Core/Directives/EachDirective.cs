@@ -36,7 +36,7 @@ namespace Jefferson.Directives
             empty = source.Substring(ifClose, endIdx - ifClose);
          }
 
-         var compiledEachExpr = parserCtx.EvaluateExpression<IEnumerable<Object>>(args);
+         var compiledEachExpr = parserCtx.CompileExpression<IEnumerable<Object>>(args);
 
          // Compile else, but against the *current* context.
          var compiledEachEmpty = empty == null ? (Expression)Expression.Constant(null, typeof(Action<Object, IOutputWriter>)) : parserCtx.Parse<Object>(empty);

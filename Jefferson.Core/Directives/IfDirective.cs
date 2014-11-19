@@ -50,7 +50,7 @@ namespace Jefferson.Directives
             var contents = source.Substring(closeIdx, endIfIdx - closeIdx);
             var compiledContents = parserCtx.Parse<Object>(contents);
 
-            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(parserCtx.EvaluateExpression<Boolean>(expr).Ast, contextParamAsObj),
+            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(parserCtx.CompileExpression<Boolean>(expr).Ast, contextParamAsObj),
                                                             Expression.Invoke(compiledContents, contextParamAsObj, parserCtx.Output)));
 
             if (endIfIdx == source.Length)

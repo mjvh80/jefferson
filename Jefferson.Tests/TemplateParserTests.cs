@@ -410,6 +410,17 @@ $$/each$$
       }
 
       [Fact]
+      public void Can_evaluate_expressions_in_template_context()
+      {
+         var p = new TemplateParser();
+         var v = p.EvaluateExpression("b1", context);
+
+         var b = v as Boolean?;
+         Assert.NotNull(b);
+         Assert.Equal(true, b.Value);
+      }
+
+      [Fact]
       public void Can_handle_bad_expressions()
       {
          // Unknown names resolve to empty strings.

@@ -42,7 +42,7 @@ namespace Jefferson.Directives
 
             var value = binding.Substring(eqIdx + 1).Trim();
 
-            compiledVars.Add(name, parserContext.EvaluateExpression<Object>(value));
+            compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
 
             if (varSepIdx < 0) break;
             startIdx = varSepIdx + 1;

@@ -101,7 +101,6 @@ namespace Jefferson
             ContextTypes = new List<Type> { contextType },
             ContextDeclarations = new List<IVariableBinder> { decls },
             DirectiveMap = _mDirectiveMap,
-            PositionOffsets = new Stack<Int32>(),
             UserProvidedValueFilter = ValueFilter,
             UserProvidedOutputFilter = OutputFilter
          };
@@ -144,8 +143,11 @@ namespace Jefferson
          return source;
       }
 
-      // Todo, this does not work, needs a little refactoring around runtime contexts.
-      internal Object EvaluateExpression(String expr, Object context)
+      /// <summary>
+      /// Interprets an expression against a given context and returns the result.
+      /// As this compiles and runs on the fly, this is not expected to be fast.
+      /// </summary>
+      public Object EvaluateExpression(String expr, Object context)
       {
          Ensure.NotNull(expr, "expr");
          Ensure.NotNull(context, "context");
@@ -154,12 +156,11 @@ namespace Jefferson
          {
             ContextTypes = new List<Type> { context.GetType() },
             ContextDeclarations = new List<IVariableBinder> { context as IVariableBinder },
-            PositionOffsets = new Stack<Int32>(), // < todo to ctor?
             UserProvidedValueFilter = ValueFilter,
             UserProvidedOutputFilter = OutputFilter
          };
 
-         return ctx.EvaluateExpression<Object>(expr);
+         return ctx.EvaluateExpression<Object, Object>(expr, context);
       }
 
       public Func<String, Object, Object> ValueFilter { get; set; }
@@ -175,19 +176,20 @@ namespace Jefferson
       /// </summary>
       public class TemplateParserContext
       {
-         public TemplateParserContext(String source)
+         internal TemplateParserContext(String source)
          {
             Ensure.NotNull(source, "source");
 
             Source = source;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
+            PositionOffsets = new Stack<Int32>();
          }
 
          internal Dictionary<String, IDirective> DirectiveMap;
 
          internal List<Type> ContextTypes;
          internal List<IVariableBinder> ContextDeclarations;
-         internal Stack<Int32> PositionOffsets;
+         internal readonly Stack<Int32> PositionOffsets;
 
          internal Func<String, Object, Object> UserProvidedValueFilter;
          internal Func<String, String> UserProvidedOutputFilter;
@@ -383,7 +385,7 @@ namespace Jefferson
 
                if (expression != null)
                {
-                  var compExpr = EvaluateExpression<Object>(expression).Ast;
+                  var compExpr = CompileExpression<Object>(expression).Ast;
 
                   // Convert the object result to string. Todo: add a Write(Object) method instead?
                   bodyStmts.Add(Expression.Call(outputParam, Utils.GetMethod<IOutputWriter>(sb => sb.Write(null)),
@@ -463,7 +465,7 @@ namespace Jefferson
             return FindDirectiveEnd(source, nestedAfterEndIdx, terminators);
          }
 
-         public CompiledExpression<Object, TOutput> EvaluateExpression<TOutput>(String expr)
+         public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
          {
             Ensure.NotNull(expr, "expr");
 
@@ -472,6 +474,28 @@ namespace Jefferson
             // Parse the expression, compile it and run it.
             // todo: flags
             return parser._ParseExpressionInternal(expr, ResolveName, ExpressionParsingFlags.IgnoreCase, this.CurrentContextType, this.UserProvidedValueFilter);
+         }
+
+         /// <summary>
+         /// Interprets the given expression against the given context. This compiles and executes on the fly so this is
+         /// not expected to be fast.
+         /// </summary>
+         public TOutput EvaluateExpression<TContext, TOutput>(String expr, TContext context)
+         {
+            if (RuntimeContexts != null)
+               throw Utils.InvalidOperation("EvaluateExpression cannot be used if Parse is used");
+
+            var contextParam = Expression.Parameter(typeof(TContext), "context");
+            var contextParamAsObj = Expression.Convert(contextParam, typeof(Object));
+            this.RuntimeContexts = Expression.Variable(typeof(List<Object>), "contexts");
+            return
+               Expression.Lambda<Func<TContext, TOutput>>(
+                  Expression.Block(new[] { RuntimeContexts },
+                     Expression.Assign(RuntimeContexts, Expression.New(typeof(List<Object>))),
+                     Expression.Call(RuntimeContexts, Utils.GetMethod<List<Object>>(l => l.Add(null)), contextParam),
+                     Expression.Invoke(CompileExpression<TOutput>(expr).Ast, contextParamAsObj)),
+                  contextParam)
+                  .Compile()(context);
          }
 
          private static readonly Regex _sParentExpr = new Regex(@"^\$\d+$");
