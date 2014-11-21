@@ -71,16 +71,18 @@ namespace Jefferson.Directives
                                                           compiledVars[kvp.Key].OutputType)));
          }
 
-         var oldBinder = parserContext.ReplaceCurrentVariableBinder(new _LetBinder
+         var letBinder = new _LetBinder
          {
             VariableDecls = declaredVars
-         }); ;
+         };
+
+         letBinder.WrappedBinder = parserContext.ReplaceCurrentVariableBinder(letBinder);
 
          // Compile the scope in which these variables are bound.
          body.Add(Expression.Invoke(parserContext.Parse<Object>(source), currentContext, parserContext.Output));
 
          // Reinstate the old binder.
-         parserContext.ReplaceCurrentVariableBinder(oldBinder);
+         parserContext.ReplaceCurrentVariableBinder(letBinder.WrappedBinder);
 
          // Declare the variables to a block, and add the assigment and compiled source expressions.
          return Expression.Block(declaredVars.Values, body);
@@ -89,6 +91,7 @@ namespace Jefferson.Directives
       private class _LetBinder : IVariableBinder
       {
          public Dictionary<String, ParameterExpression> VariableDecls;
+         public IVariableBinder WrappedBinder;
 
          // Update variable declaration to compile the variable name.
          public Expression BindVariable(Expression currentContext, String name)
@@ -97,7 +100,7 @@ namespace Jefferson.Directives
             if (VariableDecls.TryGetValue(name, out variable))
                return variable;
 
-            return null;
+            return WrappedBinder.BindVariable(currentContext, name);
          }
       }
    }

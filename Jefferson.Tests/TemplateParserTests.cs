@@ -159,6 +159,37 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Deep_replacing_works()
+      {
+         var p = new TemplateParser(new IfDirective(), new LetDirective());
+         context.Add("include", "' $$#if b1$$ BLAH BLAH $$#else$$ FOOD $$/if$$ '");
+         var result = (p.ReplaceDeep(@"Blah blah blah
+         
+$$#if b1$$
+$$#let foo = '$`$b1$`$'$$
+   if if if: $$foo$$ 
+$$include$$
+$$/let$$
+$$#else$$
+   else else else
+$$/if$$
+x
+         ", context));
+
+         Assert.Equal(
+@"
+Blah blah blah
+         
+
+
+   if if if: True 
+'  BLAH BLAH  '
+
+
+x".Trim(), result.Trim());
+      }
+
+      [Fact]
       public void Errors_are_informative()
       {
          //  replacer.Replace("If no end: $$#if$$ foobar $$/if$$ blah.", context);
@@ -391,6 +422,16 @@ $$/each$$
 ", context);
 
          // Trace.WriteLine(result);
+      }
+
+      [Fact]
+      public void Can_access_variables_outside_of_let_bindings()
+      {
+         // This blew due to bug in which case the scope in which let sits was not accessed, i.e. b1 would not be known.
+         new TemplateParser(new LetDirective()).Replace(@"
+            $$#let x = 'y'$$
+               $$b1$$
+            $$/let$$", context);
       }
 
       [Fact]
