@@ -7,6 +7,8 @@ namespace Jefferson.Output
    {
       private readonly StringBuilder _mStrBldr;
 
+      internal StringBuilderOutputWriter() : this(new StringBuilder()) { }
+
       public StringBuilderOutputWriter(StringBuilder target)
       {
          Ensure.NotNull(target, "target");
@@ -16,6 +18,11 @@ namespace Jefferson.Output
       public void Write(String chunk)
       {
          _mStrBldr.Append(chunk);
+      }
+
+      internal String GetOutput()
+      {
+         return _mStrBldr.ToString();
       }
    }
 }

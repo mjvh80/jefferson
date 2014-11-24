@@ -3,6 +3,7 @@ using Jefferson.Directives;
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -275,7 +276,21 @@ $$/let$$
 And after: $$b1$$.
 ", context);
 
-         // Trace.WriteLine(result);
+         result = p.Replace(
+@"$$#let foobar$$
+  blah blah
+$$#out$$
+$$foobar$$ and $$foobar$$
+$$/let$$
+", context);
+
+         // Yes, the whitespace is not pretty.
+         Assert.Equal(
+@"blah blah
+ and 
+  blah blah", result.Trim());
+
+          Trace.WriteLine(result);
       }
 
       [Fact]

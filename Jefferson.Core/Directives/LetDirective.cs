@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Jefferson.Output;
+using System;
 using System.Collections.Generic;
 using System.Linq.Expressions;
 
@@ -13,7 +14,7 @@ namespace Jefferson.Directives
 
       public String[] ReservedWords
       {
-         get { return null; }
+         get { return new[] { "out" }; }
       }
 
       private static readonly Char[] _sVarSplit = new[] { ';' };
@@ -24,9 +25,22 @@ namespace Jefferson.Directives
          // Compile variables.
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
 
+         // We support two modes.
+         // Mode 1: $$let foo = 'bar'; b = 1$$
+         // Mode 2:
+         // Supports syntax
+         //    $$#let baz$$
+         //       Definition of baz
+         //    $$#out$$
+         //       output
+         //    $$/let$$
+         var isArgOnly = false;
          for (var startIdx = 0; ; )
          {
             var varSepIdx = arguments.IndexOf(';', startIdx);
+
+            // ; can only be used for multiple key value pair style definitions.
+            isArgOnly = isArgOnly || varSepIdx >= 0;
 
             var bindingLen = (varSepIdx < 0 ? arguments.Length : varSepIdx) - startIdx;
             if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
@@ -34,15 +48,53 @@ namespace Jefferson.Directives
             var binding = arguments.Substring(startIdx, bindingLen);
 
             var eqIdx = binding.IndexOf('=');
-            if (eqIdx < 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding: missing '='.");
+            if (eqIdx < 0)
+            {
+               if (isArgOnly) throw parserContext.SyntaxError(startIdx, "Invalid variable binding: missing '='.");
+            }
+            else isArgOnly = true;
 
-            var name = binding.Substring(0, eqIdx).Trim();
+            var name = (isArgOnly ? binding.Substring(0, eqIdx) : binding.Substring(0)).Trim();
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
 
-            var value = binding.Substring(eqIdx + 1).Trim();
+            String value;
+            if (isArgOnly)
+            {
+               value = binding.Substring(eqIdx + 1).Trim();
+               compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
+            }
+            else
+            {
+               // Look for $$#out$$.
+               var outIdx = parserContext.FindDirectiveEnd(source, 0, "$$#out$$");
+               if (outIdx < 0) throw parserContext.SyntaxError(0, "Missing $$#out$$ statement.");
 
-            compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
+               value = source.Substring(0, outIdx);
+               source = source.Substring(outIdx + "$$#out$$".Length);
+
+               // Value in this case is not an expression, but the result of applying the template.
+               var parsedDefinition = parserContext.Parse<Object>(value);
+
+               // Add an expression to get and compile at runtime.
+               // Todo: this could perhaps cache, if used more than once.
+               // Todo(2): can probably be done more efficiently as we don't need the compiledexpression step, so we have some
+               // extra lambda invocation overhead.
+               var sb = Expression.Variable(typeof(StringBuilderOutputWriter));
+               var ctxParam = Expression.Parameter(typeof(Object));
+               compiledVars.Add(name, new CompiledExpression<Object, Object>
+               {
+                  Ast = Expression.Lambda<Func<Object, Object>>(
+                           Expression.Block(new[] { sb },
+                              Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                              Expression.Invoke(parsedDefinition, ctxParam, sb),
+                              Expression.Convert(
+                                 Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
+                                 typeof(Object))),
+                           ctxParam),
+                  OutputType = typeof(String)
+               });
+            }
 
             if (varSepIdx < 0) break;
             startIdx = varSepIdx + 1;
