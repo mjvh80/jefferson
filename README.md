@@ -127,5 +127,8 @@ No. This is just an initial version and the API may change. In particular the ar
 #### Is it type safe?
 Yes.
 
+#### What's with all the `$$`
+The `$$` was initially chosen as it conflicts least with existing file formats, in our use case. I don't think other syntaxes like `{{...}}` are necessarily any better.
+
 #### What's the license?
 Apache v2, see [license.txt](license.txt).
