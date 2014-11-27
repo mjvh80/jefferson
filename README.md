@@ -16,7 +16,7 @@ Expressions are compiled relative to a context value, often called a model. Name
 Further, as in other template engines, there is support for *directives* and the ability to define new directives.
 Provided directives are
 
-`$$#if ...$$` and `$$#each ...$$`
+`$$#if …$$`, `$$#each …$$` and `$$#let …$$`.
 
 We use this in configuration files for things like
 
@@ -111,6 +111,21 @@ $$/block$$
 ```
 Note the use of the `$1` namespace to access the parent scope here.
 
+The *let* directive has another syntax form which can be used to reuse "snippets" of a source file. It binds a variable to the output of the templater like so:
+
+```
+$$#let common_stuff$$
+  $$foobar$$ is repeated
+$$#out$$
+   $$#if some_condition$$
+      Some condition is true, output $$common_stuff$$.
+   $$#else$$
+      Else output $$common_stuff$$.
+   $$/if$$
+$$/let$$
+```
+
+Thus the let keyword is followed by a variable name and then the part of the body until `$$#out$$` is considered the definition of type `String`. The actual output of this directive is the body part from `$$#out$$` until `$$/let$$`.
 
 FAQ
 ===
@@ -129,6 +144,9 @@ Yes.
 
 #### What's with all the `$$`
 The `$$` was initially chosen as it conflicts least with existing file formats, in our use case. I don't think other syntaxes like `{{...}}` are necessarily any better.
+
+### Could tihs be used to run other syntaxes?
+Not as it stands currently, but the actual template syntax parser *could* be extracted in theory, however, I have no interest in doing so at the moment.
 
 #### What's the license?
 Apache v2, see [license.txt](license.txt).
