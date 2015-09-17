@@ -19,6 +19,11 @@ namespace Jefferson.Directives
          get { return new[] { "else" }; }
       }
 
+      public Boolean IsEmptyDirective
+      {
+         get { return false; }
+      }
+
       public Expression Compile(TemplateParserContext parserCtx, String args, String source)
       {
          var closeIdx = 0;

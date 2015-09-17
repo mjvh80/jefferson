@@ -18,5 +18,9 @@ namespace Jefferson
    public interface IVariableBinder
    {
       Expression BindVariable(Expression currentContext, String name);
+
+      Expression UnbindVariable(Expression currentContext, String name);
+
+      Expression BindVariableToValue(Expression currentContext, String name, Expression value);
    }
 }

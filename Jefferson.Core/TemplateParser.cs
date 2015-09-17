@@ -196,7 +196,6 @@ namespace Jefferson
 
          /// <summary>
          /// Represents the runtime List&lt;Object&gt;, the stack of current contexts (or scopes).
-         /// This is a list because we need random access to it sometimes.
          /// </summary>
          public ParameterExpression RuntimeContexts { get; private set; }
 
@@ -343,7 +342,7 @@ namespace Jefferson
                {
                   // We are parsing a directive.
                   // Find the name of the directive, and pass on control.
-                  var dirNameEndIdx = Utils.MinNonNeg(source.IndexOf(' ', idx + 3), source.IndexOf("$$", idx + 3));
+                  var dirNameEndIdx = Utils.MinNonNeg(source.IndexOf(' ', idx + 3), source.IndexOf("/$$", idx + 3), source.IndexOf("$$", idx + 3));
                   if (dirNameEndIdx < 0) throw SyntaxError(idx, "Could not find end of directive.");
 
                   var dirBodyStartIdx = source.IndexOf("$$", idx + 3);
@@ -355,10 +354,11 @@ namespace Jefferson
                   if (!DirectiveMap.TryGetValue(directiveName, out directive))
                      throw SyntaxError(idx, "Could not find directive '{0}'.", directiveName);
 
-                  var directiveEnd = "$$/" + directiveName + "$$";
-                  var directiveEndIdx = FindDirectiveEnd(source, dirNameEndIdx, directiveEnd);
+                  var isEmpty = directive.IsEmptyDirective;
+                  var directiveEnd = isEmpty ? "$$" : "$$/" + directiveName + "$$";
+                  var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directiveEnd);
                   if (directiveEndIdx < 0) throw SyntaxError(idx, "Failed to find directive end '{0}' for directive '{1}'.", directiveEnd, directiveName);
-                  if (dirBodyStartIdx >= directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
+                  if (!isEmpty && dirBodyStartIdx >= directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
 
                   // Mark where to continue parsing.
                   prevIdx = directiveEndIdx + directiveEnd.Length;
@@ -367,8 +367,10 @@ namespace Jefferson
                   // Keep track of line numbers in global source.
                   PositionOffsets.Push(CurrentPositionOffset + dirBodyStartIdx);
 
+                  var directiveSource = isEmpty ? null : source.Substring(dirBodyStartIdx, directiveEndIdx - dirBodyStartIdx);
+
                   bodyStmts.Add(directive.Compile(this, arguments: source.Substring(dirNameEndIdx, dirBodyStartIdx - dirNameEndIdx - 2),
-                                                        source: source.Substring(dirBodyStartIdx, directiveEndIdx - dirBodyStartIdx)));
+                                                        source: directiveSource));
 
                   PositionOffsets.Pop();
                }
@@ -570,6 +572,41 @@ namespace Jefferson
             }
 
             return defaultResolver(thisExpr, name, typeName, null);
+         }
+
+         /// <summary>
+         /// Used to assign a variable at runtime (e.g. using #define).
+         /// </summary>
+         public Expression SetVariable(Expression thisExpr, String name, Expression @value)
+         {
+            var currentContextExpr = GetNthContext(0);
+            var binder = ContextDeclarations[ContextDeclarations.Count - 1];
+
+            if (binder == null)
+               throw SyntaxException.Create("Cannot set variable '{0}' because no variable binder has been set.", name);
+
+            var result = binder.BindVariableToValue(thisExpr, name, @value);
+
+            if (result == null)
+               throw SyntaxException.Create("Cannot set variable '{0}' as the current variable binder returned null.", name);
+
+            return result;
+         }
+
+         public Expression RemoveVariable(Expression thisExpr, String name)
+         {
+            var currentContextExpr = GetNthContext(0);
+            var binder = ContextDeclarations[ContextDeclarations.Count - 1];
+
+            if (binder == null)
+               throw SyntaxException.Create("Cannot unset variable '{0}' because no variable binder has been set.", name);
+
+            var result = binder.UnbindVariable(thisExpr, name);
+
+            if (result == null)
+               throw SyntaxException.Create("Cannot unset variable '{0}' because no variable binder returned null (does not support unsetting).", name);
+
+            return result;
          }
       }
    }

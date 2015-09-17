@@ -608,11 +608,9 @@ namespace Jefferson
 
                if (identifier.Contains("."))
                {
-                  // As described above, first we attempt to resolve left most. If that resolves the rest is considered method calls etc.
                   var parts = identifier.Split('.');
                   var periodsLeft = 0;
 
-                  // The first part of the qualified name is not a member access. Thus we resolve it from right to left (most specific to least specific).
                   for (var j = parts.Length - 1; j >= 0; j--)
                   {
                      result = nameResolver(actualContextExpr, parts[j], j == 0 ? null : String.Join(".", parts, 0, j), defaultResolver);
@@ -633,7 +631,7 @@ namespace Jefferson
                else if (i >= expr.Length || expr[i] != '(')
                {
                   // Simple name without periods, but not a method call.
-                  // See above, because the default resolver is used for qualified names first we must try that first in order to be consistent.
+                  // See above, because the default resolver is used for qualified names first we must try that in order to be consistent.
                   result = nameResolver(actualContextExpr, identifier, null, defaultResolver);
                   if (result == null) throwExpected("known name, could not resolve '{0}'", identifier);
                   identifier = "";

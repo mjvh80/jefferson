@@ -88,7 +88,11 @@ namespace Jefferson.Tests
             _mTypes.Add(variable, type);
       }
 
-      public Object this[String name] { get { return _mVariables[name](); } }
+      public Object this[String name]
+      {
+         get { return _mVariables[name](); }
+         set { _mVariables[name] = () => value; }
+      }
 
       public Type GetType(String variable)
       {
@@ -290,7 +294,7 @@ $$/let$$
  and 
   blah blah", result.Trim());
 
-          Trace.WriteLine(result);
+         Trace.WriteLine(result);
       }
 
       [Fact]
@@ -450,6 +454,91 @@ $$/each$$
       }
 
       [Fact]
+      public void Define_directive_works()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+
+            $$#define foo = 'bar'$$
+
+            $$foo$$
+         ", context);
+
+         Assert.Equal("bar", result.Trim());
+      }
+
+      [Fact]
+      public void Define_directive_in_let_is_ok_if_different_names()
+      {
+         var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+         $$#let x = 1$$
+            $$#define foo = 'bar'$$
+
+            $$foo$$
+         $$/let$$
+         ", context);
+
+         Assert.Equal("bar", result.Trim());
+      }
+
+      [Fact]
+      public void Define_directive_within_let_directive_does_not_work_if_same_name()
+      {
+         try
+         {
+            var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#let foo = 1$$
+               $$#define foo = 'bar'$$
+
+               $$foo$$
+            $$/let$$
+         ", context);
+
+            Assert.False(true, "expected an error");
+         }
+         catch (Exception e)
+         {
+            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+         }
+      }
+
+      [Fact]
+      public void Define_directive_within_let_directive_does_not_work_if_same_name_2()
+      {
+         try
+         {
+            var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#let foo = 1$$
+               $$#let bar = 2$$
+                  $$#define foo = 'bar'$$
+               $$/let$$
+
+               $$foo$$
+            $$/let$$
+         ", context);
+
+            Assert.False(true, "expected an error");
+         }
+         catch (Exception e)
+         {
+            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+         }
+      }
+
+      [Fact]
+      public void Can_undef_variables()
+      {
+         var result = new TemplateParser(new LetDirective(), new UndefDirective(), new DefineDirective()).Replace(@"
+         $$#let x = 1$$
+            $$#define foo = 'bar'$$
+      
+            $$foo$$ - $$#undef foo$$ - $$foo$$.
+         $$/let$$
+         ", context);
+
+         Assert.Equal("bar -  -.", result.Trim());
+      }
+
+      [Fact]
       public void Loops_are_detected()
       {
          try
@@ -529,6 +618,7 @@ $$/each$$
       {
          public String Name { get; set; }
          public String[] ReservedWords { get; set; }
+         public Boolean IsEmptyDirective { get; set; }
          public Expression Result;
          public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
          {

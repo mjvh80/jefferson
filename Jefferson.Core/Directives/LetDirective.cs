@@ -17,6 +17,11 @@ namespace Jefferson.Directives
          get { return new[] { "out" }; }
       }
 
+      public Boolean IsEmptyDirective
+      {
+         get { return false; }
+      }
+
       private static readonly Char[] _sVarSplit = new[] { ';' };
       private static readonly Char[] _sNameValueSplit = new[] { '=' };
 
@@ -152,7 +157,24 @@ namespace Jefferson.Directives
             if (VariableDecls.TryGetValue(name, out variable))
                return variable;
 
-            return WrappedBinder.BindVariable(currentContext, name);
+            return WrappedBinder == null ? null : WrappedBinder.BindVariable(currentContext, name);
+         }
+
+         public Expression BindVariableToValue(Expression currentContext, String name, Expression value)
+         {
+            // todo: this error sucks, because it's not clear where in the source this is, we need more context
+            if (VariableDecls.ContainsKey(name))
+               throw SyntaxException.Create(null, null, "Cannot set variable '{0}' because it has been bound in a let context.", name);
+
+            return WrappedBinder == null ? null : WrappedBinder.BindVariableToValue(currentContext, name, value);
+         }
+
+         public Expression UnbindVariable(Expression currentContext, String name)
+         {
+            if (VariableDecls.ContainsKey(name))
+               throw SyntaxException.Create(null, null, "Cannot unset variable '{0}' because it has been bound in a let context.", name);
+
+            return WrappedBinder == null ? null : WrappedBinder.UnbindVariable(currentContext, name);
          }
       }
    }

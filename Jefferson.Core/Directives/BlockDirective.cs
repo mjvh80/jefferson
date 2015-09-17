@@ -28,6 +28,11 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
+      public Boolean IsEmptyDirective
+      {
+         get { return false; }
+      }
+
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          var currentContext = parserContext.GetNthContext(0);
