@@ -71,7 +71,7 @@ The if directive does not introduce a new scope.
 The each directive can be used to iterate over an enumerable collection after which each object of the collection becomes the current scope. It's syntax is
 
 ```
-$$#each$$
+$$#each SomeCollection$$
    <exprA>
 $$#else$$
    <exprB>
@@ -127,6 +127,17 @@ $$/let$$
 
 Thus the let keyword is followed by a variable name and then the part of the body until `$$#out$$` is considered the definition of type `String`. The actual output of this directive is the body part from `$$#out$$` until `$$/let$$`.
 
+Note that the `#define` and `#undef` directives won't function within a let directive if they match the name that has been bound.
+
+### `$$#define$$` and `$$#undef$$`
+These directives can be used to *set* variables in the current scope. This is only supported if there is a variable binder that supports the setting and unsetting of variables.
+
+```
+$$#define foo = 'bar'$$
+
+Foo is the new $$foo$$!
+```
+
 FAQ
 ===
 
@@ -140,12 +151,12 @@ It's fast as in things are compiled using Linq expression trees. Whether it's *a
 No. This is just an initial version and the API may change. In particular the area of how names are resolved is likely to be updated. So I don't guarantee any backwards compatibility at the moment.
 
 #### Is it type safe?
-Yes.
+Yes in the sense that values are typed and ultimately converted to string before emission to output.
 
 #### What's with all the `$$`
 The `$$` was initially chosen as it conflicts least with existing file formats, in our use case. I don't think other syntaxes like `{{...}}` are necessarily any better.
 
-### Could tihs be used to run other syntaxes?
+### Could this be used to run other syntaxes?
 Not as it stands currently, but the actual template syntax parser *could* be extracted in theory, however, I have no interest in doing so at the moment.
 
 #### What's the license?
