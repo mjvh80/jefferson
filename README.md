@@ -148,7 +148,7 @@ $$#define hello(x)$$
 $$/define$$
 ```
 
-This can then be called using, e.g. ```$$hello('Marcus')$$``.
+This can then be called using, e.g. `$$hello('Marcus')$$`.
 Note that currently parameter values must be strings (or will be converted to string).
 
 FAQ
