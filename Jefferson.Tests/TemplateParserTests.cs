@@ -673,5 +673,35 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
 
          // Trace.WriteLine(values.ToString());
       }
+
+      [Fact]
+      public void Can_compare_enum_value_to_string()
+      {
+         // Jefferson.Tests.EnumTest;
+
+         var result = replacer.Replace(@"
+ 
+             $$#define foo = Jefferson.Tests.EnumTest.Foo/$$
+
+             $$ foo = 'Foo' $$
+
+         ", context).Trim();
+
+         Assert.Equal("True", result);
+      }
+
+      [Fact]
+      public void Invalid_enums_are_detected()
+      {
+        // Jefferson.Tests.EnumTest;
+
+         Assert.Throws<ArgumentException>(() => replacer.Replace(@"
+ 
+             $$#define foo = Jefferson.Tests.EnumTest.Foo/$$
+
+             $$ foo = 'f00' $$
+
+         ", context));
+      }
    }
 }

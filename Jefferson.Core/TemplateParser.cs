@@ -38,7 +38,7 @@ namespace Jefferson
       /// <summary>
       /// Creates a parser with default directives $$#if and $$#each registered.
       /// </summary>
-      public TemplateParser() : this(new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective()) { }
+      public TemplateParser() : this(new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective()) { }
 
       /// <summary>
       /// Creates a parser with the given directives.

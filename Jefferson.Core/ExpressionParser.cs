@@ -408,6 +408,29 @@ namespace Jefferson
                         f(e1, e2)));
          };
 
+         BinConversion convEnums = f => (e1, e2) =>
+         {
+            if (e1.Type.IsEnum && e2.Type.IsEnum) return f(e1, e2);   // todo < what if different types
+            if (!e1.Type.IsEnum && !e2.Type.IsEnum) return f(e1, e2);
+
+            var ignoreCase = flags.HasFlag(ExpressionParsingFlags.IgnoreCase);
+
+            if (e1.Type == typeof(String))
+            {
+               e1 = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(e2.Type), e1, Expression.Constant(ignoreCase));
+               e1 = Expression.Convert(e1, e2.Type);
+            }
+            else if (e2.Type == typeof(String))
+            {
+               e2 = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(e1.Type), e2, Expression.Constant(ignoreCase));
+               e2 = Expression.Convert(e2, e1.Type);
+            }
+
+            // todo: integral conversions
+
+            return f(e1, e2);
+         };
+
          BinConversion widenNums = f => (e1, e2) =>
          {
             if (e1.Type.IsEnum) e1 = enumToNum(e1);
@@ -511,10 +534,15 @@ namespace Jefferson
          Func<Expression, Expression> toString = e => _GetExpr<Object, String>(Expression.Convert(e, typeof(Object)), o => o == null ? null : o.ToString());
 
          // Make an expression for string comparison.
-         BinOp equals = (left, right) =>
+         BinOp equals = null;
+         equals = (left, right) =>
          {
+            // Todo: we need to formulise this code a bit better and move it out.
             if (left.Type == typeof(String) || right.Type == typeof(String)) // note: one may represent null, which has Type not String
             {
+               if (left.Type.IsEnum || right.Type.IsEnum)
+                  return convEnums(equals)(left, right);
+
                left = toString(left);
                right = toString(right);
 

@@ -42,7 +42,7 @@ namespace Jefferson.Binders
 
          var indexer = _GetIndexer(currentContext);
          var indexExpr = Expression.Property(currentContext, indexer, new[] { Expression.Constant(name) });
-         return Expression.Assign(indexExpr, value);
+         return Expression.Assign(indexExpr, Expression.Convert(value, indexExpr.Type));
       }
 
       public Expression UnbindVariable(Expression currentContext, String name)
