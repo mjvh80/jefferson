@@ -19,7 +19,7 @@ namespace Jefferson.Directives
       /// <summary>
       /// Indicates that this directive is not closed, e.g. $$#define$$ is not closed by $$/define$$.
       /// </summary>
-      Boolean IsEmptyDirective { get; }
+      Boolean MayBeEmpty { get; }
 
       Expression Compile(TemplateParserContext parserContext, String arguments, String source);
    }

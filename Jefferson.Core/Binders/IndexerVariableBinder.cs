@@ -48,7 +48,7 @@ namespace Jefferson.Binders
       public Expression UnbindVariable(Expression currentContext, String name)
       {
          mTypeDeclarations.Remove(name);
-         return Expression.Block(); // don't return null as that indicates we don't support unbinding
+         return Expression.Constant("");
       }
    }
 }

@@ -25,6 +25,12 @@ namespace Jefferson.Tests
       }
    }
 
+   public enum EnumTest
+   {
+      Foo = 1,
+      Bar = 2
+   }
+
    public class TestContext : IndexerVariableBinder
    {
       private Dictionary<String, Func<Object>> _mVariables = new Dictionary<String, Func<Object>>();
@@ -40,6 +46,8 @@ namespace Jefferson.Tests
       {
          return "$$foobar$$";
       }
+
+      public String Trim(String s) { return s == null ? "" : s.Trim(); }
 
       public String GetLoop()
       {
@@ -161,6 +169,15 @@ namespace Jefferson.Tests
          Assert.Equal("Foo is the new ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif (b1)$$ ELIF $$#else$$ ELSE $$/if$$!", context));
          Assert.Equal("Foo is the new  NESTED  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if b1$$ NESTED $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
          Assert.Equal("Foo is the new  NESTED2  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if !b1$$ HAHA $$#else$$ NESTED2 $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
+      }
+
+      [Fact]
+      public void Can_refer_to_enums()
+      {
+         var parser = new ExpressionParser<TestContext, EnumTest>();
+         var result = parser.ParseExpression("Jefferson.Tests.EnumTest.Foo");
+
+         Assert.Equal(1, (Int32)result(context));
       }
 
       [Fact]
@@ -328,7 +345,7 @@ $$/block$$
          var p = new TemplateParser();
 
          // Regular expression /if/.
-         var result = p.Replace("$$#if true$$ blah $$/if/$$ blah $$/if$$", context);
+         var result = p.Replace("$$#if true$$ blah $$ /if/$$ blah $$/if$$", context);
          Assert.Equal(" blah if blah ", result);
 
          // Trace.WriteLine(result);
@@ -454,91 +471,6 @@ $$/each$$
       }
 
       [Fact]
-      public void Define_directive_works()
-      {
-         var result = new TemplateParser(new DefineDirective()).Replace(@"
-
-            $$#define foo = 'bar'$$
-
-            $$foo$$
-         ", context);
-
-         Assert.Equal("bar", result.Trim());
-      }
-
-      [Fact]
-      public void Define_directive_in_let_is_ok_if_different_names()
-      {
-         var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
-         $$#let x = 1$$
-            $$#define foo = 'bar'$$
-
-            $$foo$$
-         $$/let$$
-         ", context);
-
-         Assert.Equal("bar", result.Trim());
-      }
-
-      [Fact]
-      public void Define_directive_within_let_directive_does_not_work_if_same_name()
-      {
-         try
-         {
-            var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
-            $$#let foo = 1$$
-               $$#define foo = 'bar'$$
-
-               $$foo$$
-            $$/let$$
-         ", context);
-
-            Assert.False(true, "expected an error");
-         }
-         catch (Exception e)
-         {
-            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
-         }
-      }
-
-      [Fact]
-      public void Define_directive_within_let_directive_does_not_work_if_same_name_2()
-      {
-         try
-         {
-            var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
-            $$#let foo = 1$$
-               $$#let bar = 2$$
-                  $$#define foo = 'bar'$$
-               $$/let$$
-
-               $$foo$$
-            $$/let$$
-         ", context);
-
-            Assert.False(true, "expected an error");
-         }
-         catch (Exception e)
-         {
-            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
-         }
-      }
-
-      [Fact]
-      public void Can_undef_variables()
-      {
-         var result = new TemplateParser(new LetDirective(), new UndefDirective(), new DefineDirective()).Replace(@"
-         $$#let x = 1$$
-            $$#define foo = 'bar'$$
-      
-            $$foo$$ - $$#undef foo$$ - $$foo$$.
-         $$/let$$
-         ", context);
-
-         Assert.Equal("bar -  -.", result.Trim());
-      }
-
-      [Fact]
       public void Loops_are_detected()
       {
          try
@@ -618,7 +550,7 @@ $$/each$$
       {
          public String Name { get; set; }
          public String[] ReservedWords { get; set; }
-         public Boolean IsEmptyDirective { get; set; }
+         public Boolean MayBeEmpty { get; set; }
          public Expression Result;
          public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
          {

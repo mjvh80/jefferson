@@ -28,7 +28,7 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
-      public Boolean IsEmptyDirective
+      public Boolean MayBeEmpty
       {
          get { return false; }
       }

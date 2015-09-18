@@ -354,8 +354,14 @@ namespace Jefferson
                   if (!DirectiveMap.TryGetValue(directiveName, out directive))
                      throw SyntaxError(idx, "Could not find directive '{0}'.", directiveName);
 
-                  var isEmpty = directive.IsEmptyDirective;
-                  var directiveEnd = isEmpty ? "$$" : "$$/" + directiveName + "$$";
+                  /* Note: empty directives are required to end with /$$ to keep the parser simple.
+                   * Otherwise we'd need to ask directives if they are empty based on their arguments.
+                   * I also think it is more clear from source that there's no end to be expected. */
+                  var isEmpty = source[dirBodyStartIdx - 3] == '/';
+                  if (isEmpty && !directive.MayBeEmpty)
+                     throw SyntaxError(dirBodyStartIdx - 3, "Directive may not be empty.");
+
+                  var directiveEnd = isEmpty ? "/$$" : "$$/" + directiveName + "$$";
                   var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directiveEnd);
                   if (directiveEndIdx < 0) throw SyntaxError(idx, "Failed to find directive end '{0}' for directive '{1}'.", directiveEnd, directiveName);
                   if (!isEmpty && dirBodyStartIdx >= directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
@@ -369,11 +375,13 @@ namespace Jefferson
 
                   var directiveSource = isEmpty ? null : source.Substring(dirBodyStartIdx, directiveEndIdx - dirBodyStartIdx);
 
-                  bodyStmts.Add(directive.Compile(this, arguments: source.Substring(dirNameEndIdx, dirBodyStartIdx - dirNameEndIdx - 2),
+                  bodyStmts.Add(directive.Compile(this, arguments: source.Substring(dirNameEndIdx, dirBodyStartIdx - dirNameEndIdx - (isEmpty ? 3 : 2)),
                                                         source: directiveSource));
 
                   PositionOffsets.Pop();
                }
+               else if (idx + 2 < source.Length && source[idx + 2] == '/')
+                  throw SyntaxError(idx, "Unexpected '{0}' found.", source.Substring(idx, 3)); // todo: improve this error
                else
                {
                   // Simpler replacement expression.
@@ -414,6 +422,9 @@ namespace Jefferson
          /// <summary>
          /// Finds the given "block" terminators, e.g. for #if one wants to look for $$#else$$, $$#elif$$ or $$/if$$.
          /// This is a convenience method that can handle nested directives.
+         /// 
+         /// Note: this method causes some unnecessary re-parsing of source in case of nested directives, but as long as this
+         /// is not a problem I'll keep this in favour of more complicated models (e.g. an ast or whatever).
          /// </summary>
          public Int32 FindDirectiveEnd(String source, Int32 start, params String[] terminators)
          {

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Jefferson.Output;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -19,7 +20,7 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
-      public Boolean IsEmptyDirective
+      public Boolean MayBeEmpty
       {
          get { return true; }
       }
@@ -28,6 +29,8 @@ namespace Jefferson.Directives
       {
          // Compile variables.
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
+
+         var haveSource = !String.IsNullOrEmpty(source);
 
          for (var startIdx = 0; ; )
          {
@@ -40,19 +43,51 @@ namespace Jefferson.Directives
             var binding = arguments.Substring(startIdx, bindingLen);
 
             var eqIdx = binding.IndexOf('=');
-            if (eqIdx < 0)
-            {
-               throw parserContext.SyntaxError(startIdx, "Invalid variable binding: missing '='.");
-            }
 
-            var name = binding.Substring(0, eqIdx).Trim();
+            var name = eqIdx < 0 ? binding.Substring(0) : binding.Substring(0, eqIdx);
+            name = name.Trim();
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
 
-            var value = binding.Substring(eqIdx + 1).Trim();
-            compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
+            if (eqIdx >= 0)
+            {
+               if (haveSource)
+                  throw parserContext.SyntaxError(startIdx, "#define directive is not empty, unexpected '='");
+
+               var value = binding.Substring(eqIdx + 1).Trim();
+               compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
+            }
+            else
+            {
+               // We have a body.
+               // Value in this case is not an expression, but the result of applying the template.
+               var parsedDefinition = parserContext.Parse<Object>(source);
+
+               // Add an expression to get and compile at runtime.
+               // Todo: this could perhaps cache, if used more than once.
+               // Todo(2): can probably be done more efficiently as we don't need the compiledexpression step, so we have some
+               // extra lambda invocation overhead.
+               var sb = Expression.Variable(typeof(StringBuilderOutputWriter));
+               var ctxParam = Expression.Parameter(typeof(Object));
+               compiledVars.Add(name, new CompiledExpression<Object, Object>
+               {
+                  Ast = Expression.Lambda<Func<Object, Object>>(
+                           Expression.Block(new[] { sb },
+                              Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                              Expression.Invoke(parsedDefinition, ctxParam, sb),
+                              Expression.Convert(
+                                 Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
+                                 typeof(Object))),
+                           ctxParam),
+                  OutputType = typeof(String)
+               });
+            }
 
             if (varSepIdx < 0) break;
+
+            if (haveSource)
+               throw parserContext.SyntaxError(varSepIdx, "Unexpected ';', #define is not empty.");
+
             startIdx = varSepIdx + 1;
          }
 
@@ -81,7 +116,7 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
-      public Boolean IsEmptyDirective
+      public Boolean MayBeEmpty
       {
          get { return true; }
       }
