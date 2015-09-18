@@ -594,7 +594,7 @@ namespace Jefferson.Tests
          Assert.True(p2.ParseExpression("1.0")(new Context()) is Double);
 
          var p3 = new ExpressionParser<Context, Double>();
-         Assert.True(p3.ParseExpression("1")(new Context()) is Double);
+         Assert.Equal(1.0, p3.ParseExpression("1")(new Context()));
       }
 
       [Fact]
@@ -778,7 +778,7 @@ namespace Jefferson.Tests
 
          AssertError(() => parser.ParseExpression("2Foo.2Bar == true", (o, n, ns, @default) =>
          {
-            if (o is Context && Char.IsNumber(n[0]))
+            if (Char.IsNumber(n[0]))
                Assert.True(false, "Name cannot start with number.");
 
             return Expression.Constant(true);
