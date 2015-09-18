@@ -138,6 +138,19 @@ $$#define foo = 'bar'$$
 Foo is the new $$foo$$!
 ```
 
+`#define` can be usefull for snippet re-use.
+
+`#define` can also take parameters, e.g.
+
+```
+$$#define hello(x)$$
+  Hello $$x$$!
+$$/define$$
+```
+
+This can then be called using, e.g. ```$$hello('Marcus')$$``.
+Note that currently parameter values must be strings (or will be converted to string).
+
 FAQ
 ===
 
@@ -145,7 +158,7 @@ FAQ
 I'm not a believer in creationism, this evolved from more humble beginnings.
 
 #### Is it fast?
-It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance.
+It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance. With regards to parsing the focus has been to keep the parser relatively simple vs as performant as compturely possible.
 
 #### Is the API stable?
 No. This is just an initial version and the API may change. In particular the area of how names are resolved is likely to be updated. So I don't guarantee any backwards compatibility at the moment.

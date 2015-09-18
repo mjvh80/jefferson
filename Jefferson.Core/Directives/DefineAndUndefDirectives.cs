@@ -3,8 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Jefferson.Directives
 {
@@ -23,6 +21,38 @@ namespace Jefferson.Directives
       public Boolean MayBeEmpty
       {
          get { return true; }
+      }
+
+      // note: return null not empty
+      private String[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
+      {
+         var idx = input.IndexOf('(');
+         if (idx < 0)
+         {
+            name = input;
+            return null;
+         }
+
+         var lidx = input.IndexOf(')', idx + 1);
+         if (lidx < 0) throw parserContext.SyntaxError(idx, "Missing ')'.");
+
+         name = input.Substring(0, idx);
+
+         if (lidx == idx + 1)
+            return null; // () no params
+
+         var @params = new List<String>();
+         for (var i = idx + 1; i < input.Length; )
+         {
+            var endIdx = input.IndexOf(',', i);
+            if (endIdx < 0) endIdx = lidx;
+
+            @params.Add(input.Substring(i, endIdx - i).Trim());
+
+            if (endIdx == lidx) break;
+            i = endIdx + 1;
+         }
+         return @params.ToArray();
       }
 
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
@@ -46,6 +76,11 @@ namespace Jefferson.Directives
 
             var name = eqIdx < 0 ? binding.Substring(0) : binding.Substring(0, eqIdx);
             name = name.Trim();
+
+            var @params = _ParseParameters(parserContext, name, out name);
+            if (eqIdx >= 0 && @params != null)
+               throw parserContext.SyntaxError(0, "Unexpected arguments found in empty define directive.");
+
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
 
@@ -59,6 +94,20 @@ namespace Jefferson.Directives
             }
             else
             {
+               var haveParams = @params != null;
+
+               IVariableBinder existingBinder = null;
+               _ParameterBinder paramBinder = null;
+               if (haveParams)
+               {
+                  paramBinder = new _ParameterBinder();
+                  paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>();
+                  foreach (var p in @params)
+                     paramBinder.ParamDecls.Add(p, Expression.Variable(typeof(String), p));
+
+                  existingBinder = parserContext.ReplaceCurrentVariableBinder(paramBinder);
+               }
+
                // We have a body.
                // Value in this case is not an expression, but the result of applying the template.
                var parsedDefinition = parserContext.Parse<Object>(source);
@@ -69,18 +118,54 @@ namespace Jefferson.Directives
                // extra lambda invocation overhead.
                var sb = Expression.Variable(typeof(StringBuilderOutputWriter));
                var ctxParam = Expression.Parameter(typeof(Object));
-               compiledVars.Add(name, new CompiledExpression<Object, Object>
+
+               if (haveParams)
                {
-                  Ast = Expression.Lambda<Func<Object, Object>>(
-                           Expression.Block(new[] { sb },
-                              Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
-                              Expression.Invoke(parsedDefinition, ctxParam, sb),
-                              Expression.Convert(
-                                 Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
-                                 typeof(Object))),
-                           ctxParam),
-                  OutputType = typeof(String)
-               });
+                  Type funcType;
+                  switch (@params.Length)
+                  {
+                     case 1: funcType = typeof(Func<String, String>); break;
+                     case 2: funcType = typeof(Func<String, String, String>); break;
+                     case 3: funcType = typeof(Func<String, String, String, String>); break;
+                     case 4: funcType = typeof(Func<String, String, String, String, String>); break;
+                     case 5: funcType = typeof(Func<String, String, String, String, String, String>); break;
+                     default:
+                        throw parserContext.SyntaxError(0, "#define directives support up to 5 parameters currently.");
+                  }
+
+                  compiledVars.Add(name, new CompiledExpression<Object, Object>
+                  {
+                     Ast = Expression.Lambda<Func<Object, Object>>(
+                        // The result *value* here is not a string, but a Func<String, String> (for one parameter).
+                        // Thus when the define is used, the Func is evaluated.
+                              Expression.Lambda(funcType,
+                                 Expression.Block(new[] { sb },
+                                    Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                                    Expression.Invoke(parsedDefinition, ctxParam, sb),
+                                       Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput()))),
+                                 paramBinder.ParamDecls.Values),
+                              ctxParam),
+                     OutputType = funcType
+                  });
+               }
+               else
+                  compiledVars.Add(name, new CompiledExpression<Object, Object>
+                  {
+                     Ast = Expression.Lambda<Func<Object, Object>>(
+                              Expression.Block(new[] { sb },
+                                 Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                                 Expression.Invoke(parsedDefinition, ctxParam, sb),
+                                 Expression.Convert(
+                                    Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
+                                    typeof(Object))),
+                              ctxParam),
+                     OutputType = typeof(String)
+                  });
+
+               if (haveParams)
+               {
+                  parserContext.ReplaceCurrentVariableBinder(existingBinder);
+               }
             }
 
             if (varSepIdx < 0) break;
@@ -101,6 +186,39 @@ namespace Jefferson.Directives
          }
 
          return Expression.Block(body);
+      }
+
+      private class _ParameterBinder : IVariableBinder
+      {
+         public Dictionary<String, ParameterExpression> ParamDecls;
+         public IVariableBinder WrappedBinder;
+
+         // Update variable declaration to compile the variable name.
+         public Expression BindVariable(Expression currentContext, String name)
+         {
+            ParameterExpression variable;
+            if (ParamDecls.TryGetValue(name, out variable))
+               return variable;
+
+            return WrappedBinder == null ? null : WrappedBinder.BindVariable(currentContext, name);
+         }
+
+         public Expression BindVariableToValue(Expression currentContext, String name, Expression value)
+         {
+            // todo: this error sucks, because it's not clear where in the source this is, we need more context
+            if (ParamDecls.ContainsKey(name))
+               throw SyntaxException.Create(null, null, "Cannot set variable '{0}' because it has been bound to a define parameter.", name);
+
+            return WrappedBinder == null ? null : WrappedBinder.BindVariableToValue(currentContext, name, value);
+         }
+
+         public Expression UnbindVariable(Expression currentContext, String name)
+         {
+            if (ParamDecls.ContainsKey(name))
+               throw SyntaxException.Create(null, null, "Cannot unset variable '{0}' because it has been bound to a define parameter.", name);
+
+            return WrappedBinder == null ? null : WrappedBinder.UnbindVariable(currentContext, name);
+         }
       }
    }
 

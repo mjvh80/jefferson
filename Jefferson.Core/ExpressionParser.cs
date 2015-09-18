@@ -1032,7 +1032,7 @@ namespace Jefferson
       // todo: calling this isn't nice because the generic arguments are required for the call but not actually needed. Move somewhere else.
       public static Boolean IsValidName(String name)
       {
-         if (String.IsNullOrEmpty(name)) return false;
+         if (String.IsNullOrWhiteSpace(name)) return false;
          if (Char.IsNumber(name[0])) return false;
          return name.All(c => Char.IsNumber(c) || Char.IsLetter(c) || c == '_' || c == '$');
       }

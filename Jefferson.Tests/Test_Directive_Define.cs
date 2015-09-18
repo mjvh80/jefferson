@@ -1,5 +1,6 @@
 ﻿using Jefferson.Directives;
 using System;
+using System.Diagnostics;
 using Xunit;
 
 namespace Jefferson.Tests
@@ -113,6 +114,32 @@ namespace Jefferson.Tests
          ", context);
 
          Assert.Equal("Hello!-Hello!", result.Trim());
+      }
+
+      [Fact]
+      public void Define_can_accept_arguments()
+      {
+         var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#define foobar(x)$$
+               Hello $$x$$
+            $$/define$$
+
+            $$foobar('Marcus')$$
+         ", context);
+
+         Assert.Equal("Hello Marcus", result.Trim());
+         Trace.WriteLine(result);
+
+         result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#define blah(x, y)$$
+               Blah = $$x$$ and $$y$$!
+            $$/define$$
+
+            $$blah('xxx', 'yyy')$$
+         ", context);
+
+         Assert.Equal("Blah = xxx and yyy!", result.Trim());
+         Trace.WriteLine(result);
       }
    }
 }
