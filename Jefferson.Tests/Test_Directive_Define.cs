@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -86,6 +87,59 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Undef_directive_within_let_directive_does_not_work_if_same_name()
+      {
+         try
+         {
+            var result = new TemplateParser(new LetDirective(), new UndefDirective()).Replace(@"
+            $$#let foo = 1$$
+               $$#let bar = 2$$
+                  $$#undef foo /$$
+               $$/let$$
+
+               $$foo$$
+            $$/let$$
+         ", context);
+
+            Assert.False(true, "expected an error");
+         }
+         catch (Exception e)
+         {
+            Assert.Equal("Cannot unset variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+         }
+      }
+
+      [Theory]
+      [InlineData("$$#undef/$$"), InlineData("$$#undef /$$")]
+      public void Undef_withouth_arguments_fails(String source)
+      {
+         var error = Assert.Throws<SyntaxException>(() =>
+         new TemplateParser(new UndefDirective()).Replace(source, context));
+         Trace.WriteLine(error.Message);
+      }
+
+      [Fact]
+      public void Undef_allows_trailing_semicolon()
+      {
+         // Will just allow this, don't really see the point to be too strict.
+         var result = new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(@"
+             $$#define foo = 'bar' /$$
+             $$#undef ;;;foo;; /$$
+         ", context);
+      }
+
+      [Fact(Skip = "todo")]
+      public void Cannot_undef_twice_by_default()
+      {
+         // Will just allow this, don't really see the point to be too strict.
+         var result = new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(@"
+             $$#define foo = 'bar' /$$
+             $$#undef foo;foo /$$
+             $$#undef bar /$$
+         ", context);
+      }
+
+      [Fact]
       public void Can_undef_variables()
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective(), new UndefDirective(), new DefineDirective()).Replace(@"
@@ -140,6 +194,51 @@ namespace Jefferson.Tests
 
          Assert.Equal("Blah = xxx and yyy!", result.Trim());
          Trace.WriteLine(result);
+      }
+
+      [Fact]
+      public void Can_access_let_binding_within_define()
+      {
+         var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#let foo = 'foobar'$$
+               $$#define blah(x, y)$$
+                  Blah = $$x$$ and $$y$$ and $$foo$$.
+               $$/define$$
+
+               $$blah('xxx', 'yyy')$$
+            $$/let$$
+         ", context);
+
+         Assert.Equal("Blah = xxx and yyy and foobar.", result.Trim());
+      }
+
+      [Fact]
+      public void Cannot_redefine_a_let_binding()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#let foo = 'foobar'$$
+               $$#define foo(x, y)$$
+                  Blah = $$x$$ and $$y$$ and $$foo$$.
+               $$/define$$
+
+               $$blah('xxx', 'yyy')$$
+            $$/let$$
+         ", context));
+
+         Assert.Contains("Cannot set variable 'foo' because it has been bound in a let context.", error.Message.Trim());
+      }
+
+      [Fact]
+      public void Can_access_defined_variable_outside_let_scope()
+      {
+         var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+            $$#let foo = 'foobar'$$
+               $$#define bar = 'bar' /$$
+            $$/let$$
+            bar = $$bar$$
+         ", context);
+
+         Assert.Equal("bar = bar", result.Trim());
       }
    }
 }

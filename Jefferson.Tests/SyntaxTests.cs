@@ -18,6 +18,17 @@ namespace Jefferson.Tests
 
          $$/let$$
        ")]
+      [InlineData(@"
+      $$#let a$$
+         $$#let b$$
+            $$#let c$$
+            $$#out$$
+            $$/let$$
+         $$#out$$
+         $$/let$$
+      $$#out$$
+      $$/let$$
+      ")]
       public void Can_parse_correct_syntax(String input)
       {
          var parser = new TemplateParser(new LetDirective(), new EachDirective()).Parse<TestContext>(input);
@@ -33,6 +44,14 @@ namespace Jefferson.Tests
       $$#let x$$
       $$#out$$
       $$#out$$
+      $$/let$$
+      ")]
+      [InlineData(@"
+      $$/let$$
+      ")]
+      [InlineData(@"
+      $$#let x = ''$$
+      $$/let$$
       $$/let$$
       ")]
       // /if/ is a regular expression, however, this edge case is no longer allowed.

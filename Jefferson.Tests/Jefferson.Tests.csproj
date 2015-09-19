@@ -52,6 +52,8 @@
     <Compile Include="TemplateParserTests.cs" />
     <Compile Include="TestUtils.cs" />
     <Compile Include="Test_Directive_Define.cs" />
+    <Compile Include="Test_Directive_If.cs" />
+    <Compile Include="Test_Directive_Let.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

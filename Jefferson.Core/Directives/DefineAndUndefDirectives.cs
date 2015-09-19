@@ -96,7 +96,6 @@ namespace Jefferson.Directives
             {
                var haveParams = @params != null;
 
-               IVariableBinder existingBinder = null;
                _ParameterBinder paramBinder = null;
                if (haveParams)
                {
@@ -105,7 +104,7 @@ namespace Jefferson.Directives
                   foreach (var p in @params)
                      paramBinder.ParamDecls.Add(p, Expression.Variable(typeof(String), p));
 
-                  existingBinder = parserContext.ReplaceCurrentVariableBinder(paramBinder);
+                  paramBinder.WrappedBinder = parserContext.ReplaceCurrentVariableBinder(paramBinder);
                }
 
                // We have a body.
@@ -164,7 +163,7 @@ namespace Jefferson.Directives
 
                if (haveParams)
                {
-                  parserContext.ReplaceCurrentVariableBinder(existingBinder);
+                  parserContext.ReplaceCurrentVariableBinder(paramBinder.WrappedBinder);
                }
             }
 
@@ -241,7 +240,7 @@ namespace Jefferson.Directives
 
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
-         var args = arguments.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(n => n.Trim());
+         var args = arguments.Split(new[] { ';' }).Select(n => n.Trim()).Where(n => n.Length > 0);
          foreach (var name in args)
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
@@ -251,6 +250,9 @@ namespace Jefferson.Directives
 
          foreach (var name in args)
             body.Add(parserContext.RemoveVariable(currentContext, name));
+
+         if (body.Count == 0)
+            throw parserContext.SyntaxError(0, "#undef requires arguments (variables to undefine)");
 
          return Expression.Block(body);
       }

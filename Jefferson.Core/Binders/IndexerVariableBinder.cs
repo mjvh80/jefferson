@@ -47,6 +47,9 @@ namespace Jefferson.Binders
 
       public Expression UnbindVariable(Expression currentContext, String name)
       {
+         // todo: error incorrect
+         if (!mTypeDeclarations.ContainsKey(name))
+            throw SyntaxException.Create(null, "Variable '{0}' cannot be unset because it has not been set.", name);
          mTypeDeclarations.Remove(name);
          return Expression.Constant("");
       }
