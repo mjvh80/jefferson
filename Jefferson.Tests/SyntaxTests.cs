@@ -65,5 +65,17 @@ namespace Jefferson.Tests
 
          Trace.WriteLine(error.Message);
       }
+
+      [Fact]
+      public void Can_handle_syntactic_edge_cases()
+      {
+         var p = new TemplateParser();
+
+         // Regular expression /if/.
+         var result = p.Replace("$$#if true$$ blah $$ /if/$$ blah $$/if$$", new TestContext());
+         Assert.Equal(" blah if blah ", result);
+
+         // Trace.WriteLine(result);
+      }
    }
 }
