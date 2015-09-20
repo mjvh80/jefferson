@@ -156,22 +156,6 @@ namespace Jefferson.Tests
       }
 
       [Fact]
-      public void If_directives_work()
-      {
-         Assert.Equal("Foo is the new bar!", replacer.Replace("Foo is the new $$#if b1$$bar$$/if$$!", context));
-         Assert.Equal("Foo is the new !", replacer.Replace("Foo is the new $$#if !b1$$bar$$/if$$!", context));
-
-         // Test nested if:
-         Assert.Equal("Foo is the new baa qux aarrr!", replacer.Replace("Foo is the new $$#if b1$$b$$#if !b2$$aa $$foobar$$ aa$$/if$$rrr$$/if$$!", context));
-
-         // If/Else tests
-         Assert.Equal("Foo is the new ELSE !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#else$$ ELSE $$/if$$!", context));
-         Assert.Equal("Foo is the new ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif (b1)$$ ELIF $$#else$$ ELSE $$/if$$!", context));
-         Assert.Equal("Foo is the new  NESTED  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if b1$$ NESTED $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
-         Assert.Equal("Foo is the new  NESTED2  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if !b1$$ HAHA $$#else$$ NESTED2 $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
-      }
-
-      [Fact]
       public void Can_refer_to_enums()
       {
          var parser = new ExpressionParser<TestContext, EnumTest>();

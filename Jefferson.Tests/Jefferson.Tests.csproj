@@ -50,8 +50,9 @@
     <Compile Include="SanityChecks.cs" />
     <Compile Include="SyntaxTests.cs" />
     <Compile Include="TemplateParserTests.cs" />
-    <Compile Include="TestUtils.cs" />
+    <Compile Include="Test_Directive_Block.cs" />
     <Compile Include="Test_Directive_Define.cs" />
+    <Compile Include="Test_Directive_Each.cs" />
     <Compile Include="Test_Directive_If.cs" />
     <Compile Include="Test_Directive_Let.cs" />
   </ItemGroup>

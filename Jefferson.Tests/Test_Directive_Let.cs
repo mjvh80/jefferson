@@ -1,5 +1,7 @@
 ﻿using Jefferson.Directives;
+using System;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -32,6 +34,22 @@ namespace Jefferson.Tests
          ", new TestContext()));
 
          Assert.Equal("Cannot set variable 'a' because it has been bound in a let context.", error.Message.Trim());
+      }
+
+      [Theory]
+      // [InlineData("$$#let a='foo';$$ $$/let$$")] // todo this throws because empty, make consistent with #define which allows empties...
+      public void Let_good_syntax_facts(String input)
+      {
+         var result = new TemplateParser(new LetDirective()).Replace(input, new TestContext());
+      }
+
+      [Theory]
+      [InlineData("$$#let a= 'book'/$$"), InlineData("$$#let a = 'boo'//$$")]
+      [InlineData("$$#let$$$$/let$$"), InlineData("$$#let a=$$ $$/let$$")]
+      [InlineData("$$#let a='b'$$")][InlineData("$$#let 1a='b'$$$$/let$$")]
+      public void Let_bad_syntax_facts(String input)
+      {
+         Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));
       }
    }
 }

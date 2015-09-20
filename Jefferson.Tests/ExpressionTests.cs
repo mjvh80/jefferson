@@ -220,7 +220,7 @@ namespace Jefferson.Tests
          var func = parser.ParseExpression("Actual == 'ACTUAL'", typeof(ActualContext));
          Assert.True(func(new ActualContext()));
 
-         TestUtils.AssertThrows(() => func(new Context()));
+         Assert.Throws<InvalidCastException>(() => func(new Context()));
       }
 
       [Theory]
