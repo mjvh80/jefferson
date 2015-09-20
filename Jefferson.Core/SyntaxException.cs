@@ -33,6 +33,11 @@ namespace Jefferson
 
       public static SyntaxException Create(String source, Int32 position, String msg = null, params Object[] args)
       {
+         return Create(null, source, position, msg, args);
+      }
+
+      public static SyntaxException Create(Exception inner, String source, Int32 position, String msg = null, params Object[] args)
+      {
          var line = _GetLine(source, position);
          var lineNum = _FindLineNumber(source, ref position);
          var positionalMessage = lineNum + ": " + line + "\r\n" + new String(' ', lineNum.ToStringInvariant().Length) + "  ";
@@ -45,7 +50,7 @@ namespace Jefferson
          else
             msg = String.Format(msg, args);
 
-         return new SyntaxException(msg + "\r\n\r\n" + positionalMessage);
+         return new SyntaxException(msg + "\r\n\r\n" + positionalMessage, inner);
       }
 
       internal static String _GetLine(String source, Int32 position)

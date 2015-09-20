@@ -128,15 +128,17 @@ namespace Jefferson.Tests
          ", context);
       }
 
-      [Fact(Skip = "todo")]
+      [Fact]
       public void Cannot_undef_twice_by_default()
       {
          // Will just allow this, don't really see the point to be too strict.
-         var result = new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(@"
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(@"
              $$#define foo = 'bar' /$$
              $$#undef foo;foo /$$
              $$#undef bar /$$
-         ", context);
+         ", context));
+
+         Assert.Contains("Failed to unbind variable 'foo'", error.Message);
       }
 
       [Fact]
@@ -152,6 +154,25 @@ namespace Jefferson.Tests
 
          Assert.Contains("Expected known name, could not resolve 'foo'", error.Message);
          // Assert.Equal("bar -  -.", result.Trim());
+      }
+
+      [Fact]
+      public void Cannot_declare_define_with_more_than_5_params()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define a(b,c,d,e,f,g,h)$$
+         $$/define$$
+         ", context));
+
+         // Trace.WriteLine(error.Message);
+      }
+
+      [Fact]
+      public void Define_with_parameters_must_have_body()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define a(b,c,d)/$$
+         ", context));
       }
 
       [Fact]

@@ -297,6 +297,11 @@ namespace Jefferson
             return SyntaxException.Create(this.Source, GetPosition(relativeIdx), msg, args);
          }
 
+         public Exception SyntaxError(Int32 relativeIdx, Exception inner, String msg, params Object[] args)
+         {
+            return SyntaxException.Create(inner, Source, GetPosition(relativeIdx), msg, args);
+         }
+
          /// <summary>
          /// Beef.
          /// </summary>
@@ -588,34 +593,50 @@ namespace Jefferson
          /// <summary>
          /// Used to assign a variable at runtime (e.g. using #define).
          /// </summary>
-         public Expression SetVariable(Expression thisExpr, String name, Expression @value)
+         public Expression SetVariable(Expression thisExpr, String name, Int32 relativePositionInSource, Expression @value)
          {
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
 
             if (binder == null)
-               throw SyntaxException.Create("Cannot set variable '{0}' because no variable binder has been set.", name);
+               throw SyntaxError(relativePositionInSource, "Cannot set variable '{0}' because no variable binder has been set.", name);
 
-            var result = binder.BindVariableToValue(thisExpr, name, @value);
+            Expression result = null;
+            try
+            {
+               result = binder.BindVariableToValue(thisExpr, name, @value);
+            }
+            catch (Exception e)
+            {
+               throw SyntaxError(relativePositionInSource, e, "Failed to bind variable '{0}': {1}", name, e.Message);
+            }
 
             if (result == null)
-               throw SyntaxException.Create("Cannot set variable '{0}' as the current variable binder returned null.", name);
+               throw SyntaxError(relativePositionInSource, "Cannot set variable '{0}' as the current variable binder returned null.", name);
 
             return result;
          }
 
-         public Expression RemoveVariable(Expression thisExpr, String name)
+         public Expression RemoveVariable(Expression thisExpr, String name, Int32 relativePositionInSource)
          {
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
 
             if (binder == null)
-               throw SyntaxException.Create("Cannot unset variable '{0}' because no variable binder has been set.", name);
+               throw this.SyntaxError(relativePositionInSource, "Cannot unset variable '{0}' because no variable binder has been set.", name);
 
-            var result = binder.UnbindVariable(thisExpr, name);
+            Expression result = null;
+            try
+            {
+               result = binder.UnbindVariable(thisExpr, name);
+            }
+            catch (Exception e)
+            {
+               throw this.SyntaxError(relativePositionInSource, e, "Failed to unbind variable '{0}': {1}", name, e.Message);
+            }
 
             if (result == null)
-               throw SyntaxException.Create("Cannot unset variable '{0}' because no variable binder returned null (does not support unsetting).", name);
+               throw this.SyntaxError(relativePositionInSource, "Cannot unset variable '{0}' because no variable binder returned null (does not support unsetting).", name);
 
             return result;
          }

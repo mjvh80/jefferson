@@ -94,6 +94,9 @@ namespace Jefferson.Directives
             }
             else
             {
+               if (!haveSource)
+                  throw parserContext.SyntaxError(startIdx, "Missing #define body.");
+
                var haveParams = @params != null;
 
                _ParameterBinder paramBinder = null;
@@ -181,7 +184,7 @@ namespace Jefferson.Directives
          foreach (var kvp in compiledVars)
          {
             var valExpr = Expression.Convert(Expression.Invoke(compiledVars[kvp.Key].Ast, Expression.Convert(currentContext, typeof(Object))), kvp.Value.OutputType);
-            body.Add(parserContext.SetVariable(currentContext, kvp.Key, valExpr));
+            body.Add(parserContext.SetVariable(currentContext, kvp.Key, 0, valExpr)); // todo: track positions of variables for better errors
          }
 
          return Expression.Block(body);
@@ -249,7 +252,7 @@ namespace Jefferson.Directives
          var body = new List<Expression>();
 
          foreach (var name in args)
-            body.Add(parserContext.RemoveVariable(currentContext, name));
+            body.Add(parserContext.RemoveVariable(currentContext, name, 0)); // todo track position of names for somewhat better errors
 
          if (body.Count == 0)
             throw parserContext.SyntaxError(0, "#undef requires arguments (variables to undefine)");

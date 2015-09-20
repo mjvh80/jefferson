@@ -23,7 +23,7 @@ namespace Jefferson.Binders
          // Todo: we could look for e.g. things like Chars... i.e. the correctly marked indexer.
          var indexer = currentContext.Type.GetProperty("Item");
          if (indexer == null)
-            throw SyntaxException.Create("Context type '{0}' declares variables but provides no indexer to obtain them.", currentContext.Type.FullName);
+            throw new Exception(String.Format("Context type '{0}' declares variables but provides no indexer to obtain them.", currentContext.Type.FullName));
          return indexer;
       }
 
@@ -49,7 +49,8 @@ namespace Jefferson.Binders
       {
          // todo: error incorrect
          if (!mTypeDeclarations.ContainsKey(name))
-            throw SyntaxException.Create(null, "Variable '{0}' cannot be unset because it has not been set.", name);
+            throw new InvalidOperationException(String.Format("Variable '{0}' cannot be unset because it has not been set.", name));
+
          mTypeDeclarations.Remove(name);
          return Expression.Constant("");
       }
