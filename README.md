@@ -4,19 +4,34 @@ Jefferson <img src="logo.png" width="48" height="48"></img>
 
 Jefferson is a tiny little "variable replacer" or more often called a "template engine".
 
+Jefferson is mainly intended to process configuration files, particular in scenarios where various components must be configured independently to enable a single feature it is useful to be able to switch this on/off with a single config change.
+
+```
+$$#define ENABLE_FEATURE_FOO=true /$$
+...
+<component name="foo" active="$$ENABLE_FEATURE_FOO" />
+
+$$#if ENABLE_FEATURE_FOO$$
+<component name="foo_support" ... />
+...
+$$/if$$
+```
+
+Jefferson can also be used for more general template processing, e.g.
+
 ```
 $$#if Today = Monday$$
    Hello $$#each Users['active']$$, how is $$Name.Capitalize()$$ on this fine Monday$$/each$$?
 $$/if$$
 ```
 
-Strings in between `$$` signs are compiled to Linq expression trees, and the entire template itself is compiled as an expression tree, all while preserving type safety.
-Expressions are compiled relative to a context value, often called a model. Names are resolved by first looking for properties and fields of this context and otherwise seeing if these are dynamically declared (e.g. using a dictionary).
+Strings in between `$$` signs are compiled to Linq expression trees, and the entire template itself is compiled as an expression tree, preserving type safety.
+Expressions are compiled relative to a context value, often called a model. Names are resolved by first looking for properties and fields of this context and otherwise seeing if these are dynamically declared (e.g. using a dictionary). Internally this uses an `IVariableBinder` which can be used to customize variable binding.
 
 Further, as in other template engines, there is support for *directives* and the ability to define new directives.
-Provided directives are
+Provided directives are e.g.
 
-`$$#if …$$`, `$$#each …$$` and `$$#let …$$`.
+`$$#if …$$`, `$$#each …$$`, `$$#define .. /$$` and `$$#let …$$`.
 
 We use this in configuration files for things like
 
@@ -27,6 +42,7 @@ We use this in configuration files for things like
 but as output is abstracted through an `IOutputWriter` (and one that implements this using a `TextWriter` is provided) it is very easy to use this to output, say, directly to an HTTP output stream.
 
 ## Design philosophy:
+* directives are limited and kept simple to avoid e.g. config files becoming code (separation of concerns) - use e.g. Razor otherwise
 * expressions are simple (but powerful), so we stop at assignment, in fact `=` is an alias for `==`
 * expression syntax follows C# but extends this, e.g. it adds a Perl like regex match `=~`, "overloads" `&&` with `and` (as this is much nicer to use from xml) and more
 * if anything more complex is required, add a method to the context class (aka the model)
