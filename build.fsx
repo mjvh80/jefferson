@@ -21,12 +21,14 @@ let buildMode = getBuildParamOrDefault "buildMode" "Release"
 let publishNuGet = Boolean.Parse(getBuildParamOrDefault "publishNuGet" "false")
 
 let coreBuildDir = "Jefferson.Core/bin" / buildMode
+let procBuildDir = "Jefferson.FileProcessing/bin" / buildMode
 let coreTestBuildDir = "Jefferson.Tests/bin" / buildMode
 
 let getSemanticVersion (msVersion: Version) = msVersion.Major.ToString() + "." + msVersion.Minor.ToString() + "." + msVersion.Build.ToString()
 let nugetVersion (asm) = getBuildParamOrDefault "pkgVersion" (asm |> VersionHelper.GetAssemblyVersion |> getSemanticVersion)
 
 let jeffersonCsproj = !! ("./Jefferson.Core/*.csproj")
+let jeffersonProcCsProj = !! ("./Jefferson.FileProcessing/*.csproj")
 let jeffersonTestCsproj = !! ("./Jefferson.Tests/*.csproj")
 
 let xunitConsole = "packages/xunit.runners.1.9.2/tools/xunit.console.clr4.exe"
@@ -42,6 +44,10 @@ Target "BuildCore" <| fun _ ->
    MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonCsproj
    |> Log "Build Core Output"
 
+Target "BuildFileProc" <| fun _ ->
+   MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonProcCsProj
+   |> Log "Build Core Output"
+
 Target "BuildTests" <| fun _ ->
    MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonTestCsproj  
    |> Log "Build Tests Output"
@@ -54,12 +60,13 @@ Target "Nuget" <| fun _ ->
    let libnet45 = tempDir / "lib/net45"
    ensureDirectory libnet45
 
-   // Read version from settings.xml.
    let version = nugetVersion (coreBuildDir / "Jefferson.dll")
 
    // Copy the main core DLL and its PDB.
    CopyFile libnet45 (coreBuildDir / "Jefferson.dll") 
    CopyFile libnet45 (coreBuildDir / "Jefferson.pdb")
+   CopyFile libnet45 (procBuildDir / "Jefferson.FileProcessing.dll") 
+   CopyFile libnet45 (procBuildDir / "Jefferson.FileProcessing.pdb")
    
    // Create package.
    NuGet (fun pkg ->
@@ -84,12 +91,18 @@ Target "Default" <| (fun _ -> trace "Default Target")
    ==> "BuildCore"
 
 "Default"
+   ==> "BuildFileProc"
+
+"Default"
    ==> "BuildTests"
 
 "BuildTests"
    ==> "Test"
 
 "BuildCore"
+   ==> "NuGet"
+
+"BuildFileProc"
    ==> "NuGet"
 
 "Test"
