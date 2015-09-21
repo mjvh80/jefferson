@@ -261,5 +261,13 @@ namespace Jefferson.Tests
 
          Assert.Equal("bar = bar", result.Trim());
       }
+
+      [Theory]
+      [InlineData("$$#define a(a,b, c,   d  )  $$.$$/define$$")]
+      [InlineData("$$#define a()$$.$$/define$$")]
+      public void Test_various_correct_define_syntax(String input)
+      {
+         new TemplateParser(new DefineDirective()).Replace(input, new TestContext());
+      }
    }
 }

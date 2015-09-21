@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Jefferson.Directives
 {
@@ -16,7 +13,7 @@ namespace Jefferson.Directives
    /// $$/block$$
    /// It would otherwise be impossible to access x in the current scope as let does not introduce a new scope.
    /// </summary>
-   public class BlockDirective: IDirective
+   public class BlockDirective : IDirective
    {
       public String Name
       {
