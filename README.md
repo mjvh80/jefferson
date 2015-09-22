@@ -41,6 +41,12 @@ We use this in configuration files for things like
 
 but as output is abstracted through an `IOutputWriter` (and one that implements this using a `TextWriter` is provided) it is very easy to use this to output, say, directly to an HTTP output stream.
 
+## Project Overview
+* `Jefferson.Core` implements the core expression and replacement logic
+* `Jefferson.Build` provides some services for using Jefferson during build (needs documentation)
+* `Jefferson.Tests` hosts unit tests for all projects, currently
+* `Jefferson.FileProcessing` provides some out-of the box support for working with files and per-file scopes (needs documentation and tests)
+
 ## Design philosophy:
 * directives are limited and kept simple to avoid e.g. config files becoming code (separation of concerns) - use e.g. Razor otherwise
 * expressions are simple (but powerful), so we stop at assignment, in fact `=` is an alias for `==`
@@ -166,6 +172,8 @@ $$/define$$
 
 This can then be called using, e.g. `$$hello('Marcus')$$`.
 Note that currently parameter values must be strings (or will be converted to string).
+
+This differs from the `#let` directive in that `#let` only binds a name within the statement, without affecting the context in any way. `#define` causes global changes visible accross files. Note that the `Jefferson.FileProcessing` adds support for file-level scopes. This can be used to read in a tree of files in which for every file the variables of its ancestors are accessible but it cannot alter these.
 
 FAQ
 ===
