@@ -5,8 +5,8 @@ using System.Linq.Expressions;
 namespace Jefferson.Directives
 {
    /// <summary>
-   /// Does nothing but copy the current context as a new scope.
-   /// This is not as useless as it seems, e.g. consider
+   /// Introduces a block scope. Variables that are e.g. #defined remain within the scope until this directive ends.
+   /// Further, it also allows one to access the outer context as follows:
    /// $$#block$$
    ///   $$#let x = 'blah'$$
    ///   $$ $1.x $$
@@ -15,6 +15,10 @@ namespace Jefferson.Directives
    /// </summary>
    public class BlockDirective : IDirective
    {
+      private readonly Boolean _mEnableUnbindOutsideOfBlock;
+
+      public BlockDirective(Boolean enableUnbindOutsideOfBlock = true) { _mEnableUnbindOutsideOfBlock = enableUnbindOutsideOfBlock; }
+
       public String Name
       {
          get { return "block"; }
@@ -34,7 +38,12 @@ namespace Jefferson.Directives
       {
          var currentContext = parserContext.GetNthContext(0);
          var currentContextAsObj = Expression.Convert(currentContext, typeof(Object));
-         parserContext.PushScope(currentContext.Type);
+         var binder = new _BlockScopeBinder()
+         {
+            VariableDecls = new Dictionary<String, Expression>(StringComparer.OrdinalIgnoreCase), // todo: string comparer stuff 
+            WrappedBinder = _mEnableUnbindOutsideOfBlock ? parserContext.CurrentVariableDeclaration : null
+         };
+         parserContext.PushScope(currentContext.Type, binder);
          var result = Expression.Block(
                          Expression.Call(parserContext.RuntimeContexts, Utils.GetMethod<List<Object>>(l => l.Add(null)), currentContextAsObj),
                          Expression.Invoke(parserContext.Parse<Object>(source), currentContextAsObj, parserContext.Output),
@@ -42,6 +51,39 @@ namespace Jefferson.Directives
                             Expression.Subtract(Expression.Property(parserContext.RuntimeContexts, "Count"), Expression.Constant(1))));
          parserContext.PopScope();
          return result;
+      }
+
+      private class _BlockScopeBinder : IVariableBinder
+      {
+         public Dictionary<String, Expression> VariableDecls;
+         public IVariableBinder WrappedBinder;
+
+         // Update variable declaration to compile the variable name.
+         public Expression BindVariableRead(Expression currentContext, String name)
+         {
+            if (VariableDecls.ContainsKey(name))
+               return VariableDecls[name];
+
+            // We don't need any wrapped binder check here because default resolution logic will walk up the scope tree.
+            return null;
+         }
+
+         public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
+         {
+            VariableDecls[name] = value;
+            return Expression.Default(value.Type); // note that the result of the assignment is never used
+         }
+
+         public Expression UnbindVariable(Expression currentContext, String name)
+         {
+            if (VariableDecls.ContainsKey(name))
+            {
+               VariableDecls.Remove(name);
+               return Utils.NopExpression;
+            }
+            else
+               return WrappedBinder == null ? null : WrappedBinder.UnbindVariable(currentContext, name);
+         }
       }
    }
 }

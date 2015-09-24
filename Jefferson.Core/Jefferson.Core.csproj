@@ -40,6 +40,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Binders\IndexerVariableBinder.cs" />
+    <Compile Include="Binders\ReadOnlyBinder.cs" />
     <Compile Include="Directives\BlockDirective.cs" />
     <Compile Include="Directives\DefineAndUndefDirectives.cs" />
     <Compile Include="Directives\EachDirective.cs" />

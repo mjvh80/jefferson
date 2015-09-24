@@ -5,7 +5,7 @@ using Xunit;
 
 namespace Jefferson.Tests
 {
-   class SanityChecks
+   public class SanityChecks
    {
       /// <summary>
       /// An exception type must be serializable in order to be able to cross AppDomain boundaries.

@@ -17,10 +17,10 @@ namespace Jefferson
    /// </summary>
    public interface IVariableBinder
    {
-      Expression BindVariable(Expression currentContext, String name);
+      Expression BindVariableRead(Expression currentContext, String name);
 
       Expression UnbindVariable(Expression currentContext, String name);
 
-      Expression BindVariableToValue(Expression currentContext, String name, Expression value);
+      Expression BindVariableWrite(Expression currentContext, String name, Expression value);
    }
 }

@@ -70,6 +70,18 @@ namespace Jefferson
          return newExpr.Constructor;
       }
 
+      public static MethodInfo GetOneArgTraceWriteLine()
+      {
+         return typeof(Trace).GetMethod("WriteLine", BindingFlags.Public | BindingFlags.Static, null, new[] { typeof(String) }, null);
+      }
+
+      public static Expression GetSimpleTraceExpr(String msg)
+      {
+         return Expression.Call(null, Utils.GetOneArgTraceWriteLine(), Expression.Constant(msg));
+      }
+
+      public static readonly Expression NopExpression = Expression.Default(typeof(Object)); // is there anything better?
+
       /// <summary>
       ///  Return the minimum non-negative index or -1 if empty.
       /// </summary>

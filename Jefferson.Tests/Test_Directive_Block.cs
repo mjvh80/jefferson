@@ -1,14 +1,10 @@
 ﻿using Jefferson.Directives;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using Xunit;
 
 namespace Jefferson.Tests
 {
-   class Test_Directive_Block
+   public class Test_Directive_Block
    {
       TemplateParser replacer;
       TestContext context;
@@ -29,6 +25,8 @@ namespace Jefferson.Tests
 
          ctx.Add("recursive", "GetRecursive()", true);
          ctx.Add("foobar", "qux");
+
+         ctx.Add("one", "0", true);
       }
 
       [Fact]
@@ -54,6 +52,176 @@ $$/block$$
 ", context);
 
          // Trace.WriteLine(result);
+      }
+
+      [Fact]
+      public void Can_create_a_block_scope_for_eg_define()
+      {
+         var p = new TemplateParser(new BlockDirective(), new DefineDirective());
+         var r = p.Replace(@"
+         start: $$one$$
+         $$#define one = 1/$$
+         $$#block$$
+         before: $$one$$
+         $$#define one = 2 /$$
+         after: $$one$$
+         $$/block$$
+         finally: $$one$$
+         
+         ", context);
+
+         //Trace.WriteLine(r);
+
+         Assert.Contains("start: 0", r);
+         Assert.Contains("before: 1", r);
+         Assert.Contains("after: 2", r);
+         Assert.Contains("finally: 1", r);
+      }
+
+      [Fact]
+      public void Can_rebind_let_var_in_blockscope()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective());
+         var r = p.Replace(@"
+           $$#let x = 1$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              in: $$x$$
+           $$/block$$
+           after: $$x$$
+           $$/let$$
+         ", context);
+
+         Assert.Contains("in: 2", r);
+         Assert.Contains("after: 1", r);
+      }
+
+      [Fact]
+      public void Can_undef_defined_variable_in_block()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = p.Replace(@"
+           $$#let x = 1$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#undef x/$$ << TEST HERE
+              in: $$x$$
+           $$/block$$
+           after: $$x$$
+           $$/let$$
+         ", context);
+
+         Assert.Contains("in: 1", r);
+      }
+
+      [Fact]
+      public void Cannot_undef_outside_of_block_in_let_scope()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = Assert.Throws<SyntaxException>(() => p.Replace(@"
+           $$#let x = 1$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#undef x/$$
+              $$#undef x/$$ << TEST HERE
+              in: $$x$$
+           $$/block$$
+           after: $$x$$
+           $$/let$$
+         ", context));
+
+         Assert.Contains("Cannot unset variable 'x'", r.Message);
+      }
+
+      [Fact]
+      public void Can_unbind_outside_of_block()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = Assert.Throws<SyntaxException>(() => p.Replace(@"
+           $$#define x = 1 /$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#undef x/$$
+              $$#undef x/$$ << TEST HERE
+              in: $$x$$
+           $$/block$$
+           after: $$x$$
+         ", context));
+
+         Assert.Contains("could not resolve 'x'", r.Message);
+      }
+
+      [Fact]
+      public void Can_unbind_outside_of_block_2()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = p.Replace(@"
+           $$#define x = 1 /$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#undef x/$$
+              $$#undef x/$$<< TEST HERE
+           $$/block$$
+         ", context);
+      }
+
+      [Fact]
+      public void Cannot_unbind_outside_of_block_if_disabled()
+      {
+         var p = new TemplateParser(new BlockDirective(enableUnbindOutsideOfBlock: false), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = Assert.Throws<SyntaxException>(() => p.Replace(@"
+           $$#define x = 1 /$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#undef x/$$
+              $$#undef x/$$<< TEST HERE
+           $$/block$$
+         ", context));
+
+         Assert.Contains("Cannot unset variable 'x'", r.Message);
+      }
+
+      [Fact]
+      public void Can_access_outer_scope()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = p.Replace(@"
+           $$#define x = 1 /$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              result: $$x$$ and $$ $1.x $$
+           $$/block$$
+         ", context);
+
+         Assert.Contains("result: 2 and 1", r);
+      }
+
+      [Fact]
+      public void Can_nest_blocks()
+      {
+         var p = new TemplateParser(new BlockDirective(), new LetDirective(), new DefineDirective(), new UndefDirective());
+         var r = p.Replace(@"
+           $$#define x = 1 /$$
+           before: $$x$$
+           $$#block$$
+              $$#define x = '2' /$$
+              $$#block$$
+              $$#define x = '3' /$$
+              result: $$x$$ and $$ $1.x $$ and $$ $2.x $$
+              $$/block$$
+              after: $$x$$
+           $$/block$$
+         ", context);
+
+         Assert.Contains("result: 3 and 2 and 1", r);
+         Assert.Contains("after: 2", r);
       }
    }
 }

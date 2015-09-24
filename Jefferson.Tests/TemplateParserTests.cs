@@ -3,7 +3,6 @@ using Jefferson.Directives;
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -55,6 +54,9 @@ namespace Jefferson.Tests
       }
 
       public String FieldOnCtx = "fldOnCtx";
+      public String ReadWriteProp { get; set; }
+      public String ReadProp { get; private set; }
+      public String WriteProp { internal get; set; }
 
       public IEnumerable<Foobar> Foobars;
 
@@ -106,6 +108,13 @@ namespace Jefferson.Tests
       {
          Type result;
          return _mTypes.TryGetValue(variable, out result) ? result : null;
+      }
+
+      public override Expression BindVariableWrite(Expression currentContext, String name, Expression value)
+      {
+         var type = this.GetType();
+         if (type.GetProperty(name) != null || type.GetField(name) != null) return null;
+         return base.BindVariableWrite(currentContext, name, value);
       }
    }
 
@@ -488,7 +497,7 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
       [Fact]
       public void Invalid_enums_are_detected()
       {
-        // Jefferson.Tests.EnumTest;
+         // Jefferson.Tests.EnumTest;
 
          Assert.Throws<ArgumentException>(() => replacer.Replace(@"
  
@@ -497,6 +506,19 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
              $$ foo = 'f00' $$
 
          ", context));
+      }
+
+      [Fact]
+      public void Can_set_fields_and_props_on_context()
+      {
+         replacer.Replace("$$#define FieldOnCtx='foobar' /$$", context);
+         Assert.Equal("foobar", context.FieldOnCtx);
+
+         replacer.Replace("$$#define ReadWriteProp='foobar' /$$", context);
+         Assert.Equal("foobar", context.ReadWriteProp);
+
+         replacer.Replace("$$#define WriteProp = 'bar' /$$", context);
+         Assert.Equal("bar", context.WriteProp);
       }
    }
 }

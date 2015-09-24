@@ -6,7 +6,7 @@ using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
-   class SyntaxTests
+   public class SyntaxTests
    {
       [Theory]
       [InlineData(@"

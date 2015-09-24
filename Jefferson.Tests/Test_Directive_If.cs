@@ -4,7 +4,7 @@ using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
-   class Test_Directive_If
+   public class Test_Directive_If
    {
       TemplateParser replacer;
       TestContext context;

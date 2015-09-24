@@ -27,7 +27,7 @@ namespace Jefferson.Binders
          return indexer;
       }
 
-      public System.Linq.Expressions.Expression BindVariable(Expression currentContext, String name)
+      public virtual System.Linq.Expressions.Expression BindVariableRead(Expression currentContext, String name)
       {
          Type varType;
          if (!mTypeDeclarations.TryGetValue(name, out varType)) return null;
@@ -36,7 +36,7 @@ namespace Jefferson.Binders
          return Expression.Convert(Expression.MakeIndex(currentContext, indexer, new[] { Expression.Constant(name) }), varType);
       }
 
-      public Expression BindVariableToValue(Expression currentContext, String name, Expression value)
+      public virtual Expression BindVariableWrite(Expression currentContext, String name, Expression value)
       {
          mTypeDeclarations[name] = value.Type;
 
@@ -45,7 +45,7 @@ namespace Jefferson.Binders
          return Expression.Assign(indexExpr, Expression.Convert(value, indexExpr.Type));
       }
 
-      public Expression UnbindVariable(Expression currentContext, String name)
+      public virtual Expression UnbindVariable(Expression currentContext, String name)
       {
          // todo: error incorrect
          if (!mTypeDeclarations.ContainsKey(name))

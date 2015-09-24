@@ -6,7 +6,7 @@ using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
-   class Test_Directive_Define
+   public class Test_Directive_Define
    {
       private TestContext context;
 
@@ -59,7 +59,7 @@ namespace Jefferson.Tests
          }
          catch (Exception e)
          {
-            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+            Assert.Contains("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
          }
       }
 
@@ -82,7 +82,7 @@ namespace Jefferson.Tests
          }
          catch (Exception e)
          {
-            Assert.Equal("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+            Assert.Contains("Cannot set variable 'foo' because it has been bound in a let context.", e.Message.Trim());
          }
       }
 
@@ -105,7 +105,7 @@ namespace Jefferson.Tests
          }
          catch (Exception e)
          {
-            Assert.Equal("Cannot unset variable 'foo' because it has been bound in a let context.", e.Message.Trim());
+            Assert.Contains("Cannot unset variable 'foo' because it has been bound in a let context.", e.Message.Trim());
          }
       }
 
@@ -265,6 +265,8 @@ namespace Jefferson.Tests
       [Theory]
       [InlineData("$$#define a(a,b, c,   d  )  $$.$$/define$$")]
       [InlineData("$$#define a()$$.$$/define$$")]
+      //    [InlineData("$$#define a(b,b)$$ . $$/define$$")] // todo< error but not right one
+      [InlineData("$$#define a(a)$$.$$/define$$")]
       public void Test_various_correct_define_syntax(String input)
       {
          new TemplateParser(new DefineDirective()).Replace(input, new TestContext());

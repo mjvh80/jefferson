@@ -151,22 +151,22 @@ namespace Jefferson.Directives
          public IVariableBinder WrappedBinder;
 
          // Update variable declaration to compile the variable name.
-         public Expression BindVariable(Expression currentContext, String name)
+         public Expression BindVariableRead(Expression currentContext, String name)
          {
             ParameterExpression variable;
             if (VariableDecls.TryGetValue(name, out variable))
                return variable;
 
-            return WrappedBinder == null ? null : WrappedBinder.BindVariable(currentContext, name);
+            return WrappedBinder == null ? null : WrappedBinder.BindVariableRead(currentContext, name);
          }
 
-         public Expression BindVariableToValue(Expression currentContext, String name, Expression value)
+         public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
          {
             // todo: this error sucks, because it's not clear where in the source this is, we need more context
             if (VariableDecls.ContainsKey(name))
                throw SyntaxException.Create(null, null, "Cannot set variable '{0}' because it has been bound in a let context.", name);
 
-            return WrappedBinder == null ? null : WrappedBinder.BindVariableToValue(currentContext, name, value);
+            return WrappedBinder == null ? null : WrappedBinder.BindVariableWrite(currentContext, name, value);
          }
 
          public Expression UnbindVariable(Expression currentContext, String name)

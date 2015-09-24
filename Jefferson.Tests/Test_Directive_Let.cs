@@ -6,7 +6,7 @@ using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
-   class Test_Directive_Let
+   public class Test_Directive_Let
    {
       TemplateParser replacer;
       TestContext context;
@@ -69,6 +69,20 @@ $$/let$$
       }
 
       [Fact]
+      public void Can_bind_variable_from_context()
+      {
+         // FieldOnCtx
+         var result = new TemplateParser(new LetDirective()).Replace(@"
+            $$FieldOnCtx$$
+            $$#let FieldOnCtx = 'blah'$$i
+               $$FieldOnCtx$$
+            $$/let$$", context);
+
+         Assert.Contains("blah", result);
+         Assert.Contains("fldOnCtx", result);
+      }
+
+      [Fact]
       public void Can_use_let_within_define_directive()
       {
          var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
@@ -94,10 +108,10 @@ $$/let$$
          $$/let$$
          ", new TestContext()));
 
-         Assert.Equal("Cannot set variable 'a' because it has been bound in a let context.", error.Message.Trim());
+         Assert.Contains("Cannot set variable 'a' because it has been bound in a let context.", error.Message.Trim());
       }
 
-      [Theory]
+      [Theory(Skip = "todo")]
       // [InlineData("$$#let a='foo';$$ $$/let$$")] // todo this throws because empty, make consistent with #define which allows empties...
       public void Let_good_syntax_facts(String input)
       {
@@ -107,7 +121,8 @@ $$/let$$
       [Theory]
       [InlineData("$$#let a= 'book'/$$"), InlineData("$$#let a = 'boo'//$$")]
       [InlineData("$$#let$$$$/let$$"), InlineData("$$#let a=$$ $$/let$$")]
-      [InlineData("$$#let a='b'$$")][InlineData("$$#let 1a='b'$$$$/let$$")]
+      [InlineData("$$#let a='b'$$")]
+      [InlineData("$$#let 1a='b'$$$$/let$$")]
       public void Let_bad_syntax_facts(String input)
       {
          Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));

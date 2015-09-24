@@ -270,7 +270,7 @@ namespace Jefferson.FileProcessing
 
       private static readonly Expression _sEmptyString = Expression.Constant("");
 
-      Expression IVariableBinder.BindVariable(Expression currentContext, String name)
+      Expression IVariableBinder.BindVariableRead(Expression currentContext, String name)
       {
          Func<Object> getValue;
          if (KeyValueStore.TryGetValueInScope(name, out getValue))
@@ -282,7 +282,7 @@ namespace Jefferson.FileProcessing
          return AllowUnknownNames ? _sEmptyString : null;
       }
 
-      public Expression BindVariableToValue(Expression currentContext, String name, Expression value)
+      public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
       {
          var indexer = KeyValueStore.GetType().GetProperty("Item");
          var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");

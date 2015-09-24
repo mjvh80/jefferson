@@ -1,13 +1,11 @@
-﻿using System;
+﻿using Jefferson.Directives;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
 using Xunit;
 
 namespace Jefferson.Tests
 {
-   class Test_Directive_Each
+   public class Test_Directive_Each
    {
       TemplateParser replacer;
       TestContext context;
@@ -137,6 +135,53 @@ $$/each$$
 ", context);
 
          // Trace.WriteLine(result);
+      }
+
+      [Fact]
+      public void Can_set_fields_of_each_variables()
+      {
+         context.Foobars = new List<Foobar>
+         {
+            new Foobar { Bazzy = "foo1" },
+            new Foobar { Bazzy = "foo2", Nested = new[] { "NF2_0", "NF2_1" } },
+            new Foobar { Bazzy = "foo3" }
+         };
+
+         var result = (replacer.Replace(
+@"
+Foo:
+$$#each Foobars$$
+  $$#define Bazzy = 'y' /$$
+- got $$Bazzy$$, parent: $$ $1.foobar $$
+$$/each$$
+done
+", context));
+
+         Assert.Contains("got y, parent: qux", result);
+      }
+
+      [Fact]
+      public void Can_disable_setting_of_fields_of_each_variables()
+      {
+         context.Foobars = new List<Foobar>
+         {
+            new Foobar { Bazzy = "foo1" },
+            new Foobar { Bazzy = "foo2", Nested = new[] { "NF2_0", "NF2_1" } },
+            new Foobar { Bazzy = "foo3" }
+         };
+
+         var readonlyRepl = new TemplateParser(new EachDirective(readOnly: true), new DefineDirective());
+
+         Assert.Throws<SyntaxException>(() => readonlyRepl.Replace(
+@"
+Foo:
+$$#each Foobars$$
+  $$#define Bazzy = 'y' /$$
+- got $$Bazzy$$, parent: $$ $1.foobar $$
+$$/each$$
+done
+", context));
+
       }
    }
 }

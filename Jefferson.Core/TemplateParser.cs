@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -307,6 +308,7 @@ namespace Jefferson
          /// </summary>
          public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source)
          {
+            // todo: add option, e.g. enable tracing
             Ensure.NotNull(source, "source");
 
             if (!(typeof(TContext).IsAssignableFrom(CurrentContextType)))
@@ -340,6 +342,7 @@ namespace Jefferson
             while (idx >= 0 && idx < source.Length)
             {
                var chunk = source.Substring(prevIdx, idx - prevIdx);
+
                bodyStmts.Add(Expression.Call(outputParam, writeMethod, Expression.Constant(chunk)));
 
                String expression = null;
@@ -571,17 +574,17 @@ namespace Jefferson
             // Resolve up till root context.
             for (var currentContext = GetNthContext(startIndex); ; )
             {
-               var baseResolve = defaultResolver(currentContext, name, typeName, null);
-               if (baseResolve != null) return baseResolve;
-
                // See if a variable has been declared.
                var decls = ContextDeclarations[ContextDeclarations.Count - 1 - startIndex];
 
-               var variableBinding = decls == null ? null : decls.BindVariable(currentContext, name); //varType decls.GetType(name);
+               var variableBinding = decls == null ? null : decls.BindVariableRead(currentContext, name); //varType decls.GetType(name);
 
                // todo: validate resulting type?
                if (variableBinding != null)
                   return variableBinding;
+
+               var baseResolve = defaultResolver(currentContext, name, typeName, null);
+               if (baseResolve != null) return baseResolve;
 
                startIndex += 1;
                if (startIndex == ContextTypes.Count) break;
@@ -598,21 +601,33 @@ namespace Jefferson
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
 
-            if (binder == null)
-               throw SyntaxError(relativePositionInSource, "Cannot set variable '{0}' because no variable binder has been set.", name);
-
             Expression result = null;
-            try
+            if (binder != null)
             {
-               result = binder.BindVariableToValue(thisExpr, name, @value);
-            }
-            catch (Exception e)
-            {
-               throw SyntaxError(relativePositionInSource, e, "Failed to bind variable '{0}': {1}", name, e.Message);
+               try
+               {
+                  result = binder.BindVariableWrite(thisExpr, name, @value);
+               }
+               catch (Exception e)
+               {
+                  throw SyntaxError(relativePositionInSource, e, "Failed to bind variable '{0}': {1}", name, e.Message);
+               }
             }
 
             if (result == null)
-               throw SyntaxError(relativePositionInSource, "Cannot set variable '{0}' as the current variable binder returned null.", name);
+            {
+               // Try to bind a property on the current object.
+               const BindingFlags flags = BindingFlags.Public | BindingFlags.IgnoreCase | BindingFlags.Instance;
+               var fld = thisExpr.Type.GetField(name, flags | BindingFlags.SetField);
+               if (fld != null)
+                  return Expression.Assign(Expression.Field(thisExpr, fld), @value);
+               var prop = thisExpr.Type.GetProperty(name, flags | BindingFlags.SetProperty);
+               if (prop != null)
+                  return Expression.Assign(Expression.Property(thisExpr, prop), @value);
+            }
+
+            if (result == null)
+               throw SyntaxError(relativePositionInSource, "Cannot set variable '{0}' as the current variable binder returned null and no field or property of that name has been found on context of type '{1}'", name, thisExpr.Type.FullName);
 
             return result;
          }
@@ -636,7 +651,7 @@ namespace Jefferson
             }
 
             if (result == null)
-               throw this.SyntaxError(relativePositionInSource, "Cannot unset variable '{0}' because no variable binder returned null (does not support unsetting).", name);
+               throw this.SyntaxError(relativePositionInSource, "Cannot unset variable '{0}' because variable binder does not support it (returned null).", name);
 
             return result;
          }
