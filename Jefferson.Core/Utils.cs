@@ -79,6 +79,10 @@ namespace Jefferson
       {
          return Expression.Call(null, Utils.GetOneArgTraceWriteLine(), Expression.Constant(msg));
       }
+      public static Expression GetSimpleTraceExpr(String msg, params Object[] args)
+      {
+         return Utils.GetSimpleTraceExpr(String.Format(msg, args));
+      }
 
       public static readonly Expression NopExpression = Expression.Default(typeof(Object)); // is there anything better?
 

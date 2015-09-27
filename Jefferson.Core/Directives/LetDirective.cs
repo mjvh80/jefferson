@@ -106,7 +106,7 @@ namespace Jefferson.Directives
          }
 
          // Declare them as ParameterExpressions.
-         var declaredVars = new Dictionary<String, ParameterExpression>(compiledVars.Count);
+         var declaredVars = new Dictionary<String, ParameterExpression>(compiledVars.Count, parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
          var currentContext = parserContext.GetNthContext(0);
 
          foreach (var kvp in compiledVars)

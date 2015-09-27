@@ -50,6 +50,7 @@
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="TemplateOptions.cs" />
     <Compile Include="Output\IOutputWriter.cs" />
     <Compile Include="IVariableBinder.cs" />
     <Compile Include="Output\StringBuilderOutputWriter.cs" />

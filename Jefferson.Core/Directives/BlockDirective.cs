@@ -40,7 +40,7 @@ namespace Jefferson.Directives
          var currentContextAsObj = Expression.Convert(currentContext, typeof(Object));
          var binder = new _BlockScopeBinder()
          {
-            VariableDecls = new Dictionary<String, Expression>(StringComparer.OrdinalIgnoreCase), // todo: string comparer stuff 
+            VariableDecls = new Dictionary<String, Expression>(parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal),
             WrappedBinder = _mEnableUnbindOutsideOfBlock ? parserContext.CurrentVariableDeclaration : null
          };
          parserContext.PushScope(currentContext.Type, binder);

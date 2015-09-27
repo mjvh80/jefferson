@@ -223,5 +223,20 @@ $$/block$$
          Assert.Contains("result: 3 and 2 and 1", r);
          Assert.Contains("after: 2", r);
       }
+
+      [Fact]
+      public void Case_sensitivity_can_be_controlled_in_blocks()
+      {
+         var p = new TemplateParser(new TemplateOptions { IgnoreCase = true }, new DefineDirective(), new BlockDirective());
+         p.Replace("$$FooBAr$$", context);
+
+         context = new TestContext(caseSensitive: true);
+         context.Add("foobar", "qux");
+
+         var error = Assert.Throws<SyntaxException>(() => p.Replace("$$FooBAr$$", context));
+         Assert.Contains("could not resolve", error.Message);
+
+         p.Replace("$$foobar$$", context);
+      }
    }
 }

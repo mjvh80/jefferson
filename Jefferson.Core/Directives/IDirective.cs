@@ -21,6 +21,10 @@ namespace Jefferson.Directives
       /// </summary>
       Boolean MayBeEmpty { get; }
 
+      /// <summary>
+      /// Compile the directive given the parser context, its arguments and body source. For any directive
+      /// A in $$#A arguments$$ source $$/A$$.
+      /// </summary>
       Expression Compile(TemplateParserContext parserContext, String arguments, String source);
    }
 }

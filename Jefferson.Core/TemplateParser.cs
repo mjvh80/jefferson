@@ -19,15 +19,15 @@ using Jefferson.Output;
 using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
-// Todo:
-// - nuget pkg building
-// - look at using dynamic
+// todo:
+// - contracts 
 
 namespace Jefferson
 {
@@ -36,18 +36,30 @@ namespace Jefferson
    /// </summary>
    public class TemplateParser
    {
+      private static IDirective[] _GetDefaultDirectives()
+      {
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective() };
+      }
+
       /// <summary>
-      /// Creates a parser with default directives $$#if and $$#each registered.
+      /// Creates a parser with default directives registered.
       /// </summary>
-      public TemplateParser() : this(new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective()) { }
+      public TemplateParser() : this(_GetDefaultDirectives()) { }
+
+      /// <summary>
+      /// Creates a template parser with the given directives and uses default options.
+      /// </summary>
+      public TemplateParser(params IDirective[] directives): this(new TemplateOptions(), directives) {}
+
+      public TemplateParser(TemplateOptions options) : this(options, _GetDefaultDirectives()) { }
 
       /// <summary>
       /// Creates a parser with the given directives.
       /// </summary>
-      public TemplateParser(params IDirective[] directives)
+      public TemplateParser(TemplateOptions options, params IDirective[] directives)
       {
          var reservedWords = new HashSet<String>();
-         _mDirectiveMap = new Dictionary<String, IDirective>(directives == null ? 0 : directives.Length);
+         _mDirectiveMap = new Dictionary<String, IDirective>(directives == null ? 0 : directives.Length, StringComparer.Ordinal);
          if (directives != null)
             foreach (var directive in directives.Where(d => d != null))
             {
@@ -70,10 +82,14 @@ namespace Jefferson
 
                _mDirectiveMap.Add(directive.Name, directive);
             }
+
+         Options = options ?? new TemplateOptions();
       }
 
       private readonly Dictionary<String, IDirective> _mDirectiveMap;
       private static readonly Regex _sDirectiveNameExpr = new Regex("^[a-zA-Z]+$"); // for now
+
+      public TemplateOptions Options { get; private set; }
 
       /// <summary>
       /// Convenience method. Calls Parse and compiles the resulting expression tree.
@@ -103,7 +119,8 @@ namespace Jefferson
             ContextDeclarations = new List<IVariableBinder> { decls },
             DirectiveMap = _mDirectiveMap,
             UserProvidedValueFilter = ValueFilter,
-            UserProvidedOutputFilter = OutputFilter
+            UserProvidedOutputFilter = OutputFilter,
+            Options = this.Options
          };
 
          return ctx.Parse<TContext>(source);
@@ -158,7 +175,8 @@ namespace Jefferson
             ContextTypes = new List<Type> { context.GetType() },
             ContextDeclarations = new List<IVariableBinder> { context as IVariableBinder },
             UserProvidedValueFilter = ValueFilter,
-            UserProvidedOutputFilter = OutputFilter
+            UserProvidedOutputFilter = OutputFilter,
+            Options = this.Options
          };
 
          return ctx.EvaluateExpression<Object, Object>(expr, context);
@@ -167,6 +185,7 @@ namespace Jefferson
       public Func<String, Object, Object> ValueFilter { get; set; }
 
       // todo: is this useful? Perhaps for standard output encoding?
+      // > trimming?
       private Func<String, String> OutputFilter { get; set; }
    }
 
@@ -189,11 +208,13 @@ namespace Jefferson
          internal Dictionary<String, IDirective> DirectiveMap;
 
          internal List<Type> ContextTypes;
-         internal List<IVariableBinder> ContextDeclarations;
+         internal List<IVariableBinder> ContextDeclarations; // < todo rename to ContextBinders?
          internal readonly Stack<Int32> PositionOffsets;
 
          internal Func<String, Object, Object> UserProvidedValueFilter;
          internal Func<String, String> UserProvidedOutputFilter;
+
+         public TemplateOptions Options { get; internal set; }
 
          /// <summary>
          /// Represents the runtime List&lt;Object&gt;, the stack of current contexts (or scopes).
@@ -316,7 +337,11 @@ namespace Jefferson
 
             // See if we can find jefferson.
             var idx = source.IndexOf("$$", 0, StringComparison.Ordinal);
-            if (idx < 0) return (c, sb) => sb.Write(source);
+            if (idx < 0)
+            {
+               if (Options.EnableTracing) Trace.WriteLine("No Jefferson markers found, outputting entire source.");
+               return (c, sb) => sb.Write(source);
+            }
 
             // The main context object, input to the resulting delegate.
             var contextParam = Expression.Parameter(typeof(TContext), "context");
@@ -338,11 +363,14 @@ namespace Jefferson
             else
                bodyStmts.Add(Expression.Assign(runtimeCtxs, RuntimeContexts));
 
+            if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Starting processing."));
+
             var prevIdx = 0;
             while (idx >= 0 && idx < source.Length)
             {
                var chunk = source.Substring(prevIdx, idx - prevIdx);
 
+               if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Emitting source chunk of length {0}", chunk.Length));
                bodyStmts.Add(Expression.Call(outputParam, writeMethod, Expression.Constant(chunk)));
 
                String expression = null;
@@ -377,6 +405,8 @@ namespace Jefferson
                   // Mark where to continue parsing.
                   prevIdx = directiveEndIdx + directiveEnd.Length;
 
+                  if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Compiling directive #" + directiveName));
+
                   // Add the compiled directive to the body.
                   // Keep track of line numbers in global source.
                   PositionOffsets.Push(CurrentPositionOffset + dirBodyStartIdx);
@@ -399,6 +429,8 @@ namespace Jefferson
 
                   expression = source.Substring(idx + 2, closeIdx - idx - 2);
                   prevIdx = closeIdx + 2;
+
+                  if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Emitting value of expression $${0}$$", expression));
                }
 
                if (expression != null)
@@ -420,8 +452,11 @@ namespace Jefferson
             if (prevIdx < source.Length)
             {
                var lastChunk = source.Substring(prevIdx);
+               if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Emitting last chunk of length {0}", lastChunk.Length));
                bodyStmts.Add(Expression.Call(outputParam, writeMethod, Expression.Constant(lastChunk)));
             }
+
+            if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Processing completed."));
 
             // Construct the final expression.
             return Expression.Lambda<Action<TContext, IOutputWriter>>(Expression.Block(new[] { runtimeCtxs }, bodyStmts), contextParam, outputParam);
@@ -493,8 +528,16 @@ namespace Jefferson
             var parser = new ExpressionParser<Object, TOutput>();
 
             // Parse the expression, compile it and run it.
-            // todo: flags
-            return parser._ParseExpressionInternal(expr, ResolveName, ExpressionParsingFlags.IgnoreCase, this.CurrentContextType, this.UserProvidedValueFilter);
+
+            var flags = ExpressionParsingFlags.None;
+
+            if (this.Options.IgnoreCase)
+               flags |= ExpressionParsingFlags.IgnoreCase;
+
+            if (this.Options.UseCurrentCulture)
+               flags |= ExpressionParsingFlags.UseCurrentCulture;
+
+            return parser._ParseExpressionInternal(expr, ResolveName, flags, this.CurrentContextType, this.UserProvidedValueFilter);
          }
 
          /// <summary>
@@ -617,7 +660,9 @@ namespace Jefferson
             if (result == null)
             {
                // Try to bind a property on the current object.
-               const BindingFlags flags = BindingFlags.Public | BindingFlags.IgnoreCase | BindingFlags.Instance;
+               var flags = BindingFlags.Public | BindingFlags.Instance;
+               if (Options.IgnoreCase)
+                  flags |= BindingFlags.IgnoreCase; // todo: write test
                var fld = thisExpr.Type.GetField(name, flags | BindingFlags.SetField);
                if (fld != null)
                   return Expression.Assign(Expression.Field(thisExpr, fld), @value);

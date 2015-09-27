@@ -271,5 +271,24 @@ namespace Jefferson.Tests
       {
          new TemplateParser(new DefineDirective()).Replace(input, new TestContext());
       }
+
+      [Fact]
+      public void Incorrect_arguments_to_define_gives_ok_error()
+      {
+         var p = new TemplateParser(new DefineDirective());
+         Assert.Throws<SyntaxException>(() => p.Replace("$$#define a(b)$$ $$b$$ $$/define$$ $$a('foobar', 'qux')$$", context));
+      }
+
+      [Fact]
+      public void Cannot_overload_with_define()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+            $$#define a(b)$$
+               $$#define a(b, c)$$
+                   $$a('just one param')$$
+               $$/define$$
+            $$/define$$
+         ", context));
+      }
    }
 }

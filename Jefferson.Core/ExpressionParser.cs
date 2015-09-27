@@ -753,6 +753,11 @@ namespace Jefferson
                   if (typeof(Delegate).IsAssignableFrom(result.Type)) // it's a delegate that was already resolved, call that
                   {
                      var method = result.Type.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod, null, (from e in parameters select e.Type).ToArray(), null);
+                     if (method == null)
+                     {
+                        var invoke = result.Type.GetMethod("Invoke");
+                        throwExpected("correct delegate invocation, found delegate requiring {0} parameters of types {1}", invoke.GetParameters().Length, String.Join(",", invoke.GetParameters().Select(p => p.ParameterType.Name)));
+                     }
                      result = Expression.Call(result, method, parameters);
                   }
                   else if (identifier.Length == 0) throwExpected("expression to resolve to a delegate value, got value of type '{0}'", result.Type.FullName);

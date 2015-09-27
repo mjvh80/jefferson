@@ -127,5 +127,22 @@ $$/let$$
       {
          Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));
       }
+
+      [Fact]
+      public void Let_bound_names_can_be_case_managed()
+      {
+         // By default case insensitive.
+
+         var result = replacer.Replace("$$#let a = 'hi'$$ $$A$$ $$/let$$", context);
+         Assert.Equal("hi", result.Trim());
+
+         var p = new TemplateParser(new TemplateOptions { IgnoreCase = false }, new LetDirective());
+         var error = Assert.Throws<SyntaxException>(() => p.Replace("$$#let a = 'hi'$$ $$A$$ $$/let$$", context));
+
+         Assert.Contains("could not resolve", error.Message);
+
+         result = p.Replace("$$#let a = 'hi'$$ $$a$$ $$/let$$", context);
+         Assert.Equal("hi", result.Trim());
+      }
    }
 }

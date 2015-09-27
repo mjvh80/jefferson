@@ -3,6 +3,7 @@ using Jefferson.Directives;
 using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
@@ -32,12 +33,13 @@ namespace Jefferson.Tests
 
    public class TestContext : IndexerVariableBinder
    {
-      private Dictionary<String, Func<Object>> _mVariables = new Dictionary<String, Func<Object>>();
+      private Dictionary<String, Func<Object>> _mVariables; 
       private Dictionary<String, Type> _mTypes; // = new Dictionary<String, Type>();
 
-      public TestContext()
-         : base(new Dictionary<String, Type>())
+      public TestContext(Boolean caseSensitive = false)
+         : base(new Dictionary<String, Type>(caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase))
       {
+         _mVariables = new Dictionary<String, Func<Object>>(caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase);
          _mTypes = (Dictionary<String, Type>)base.mTypeDeclarations;
       }
 
@@ -335,7 +337,7 @@ $$/if$$", context));
          var repl2 = new TemplateParser();
          var customCtx = new CustomVarContext();
 
-         Assert.Equal("Hello foobar world!", repl2.Replace("Hello $$foobar$$ world!", customCtx));
+         Assert.Equal("Hello foobar world!", repl2.Replace("Hello $$Foobar$$ world!", customCtx));
 
          // todo: more testing
       }
@@ -422,7 +424,7 @@ $$/if$$", context));
       [Fact]
       public void Can_create_template_parser_without_any_directives()
       {
-         var p = new TemplateParser(null); // causes none to be defined (incl. no defaults)
+         var p = new TemplateParser(new TemplateOptions(), null); // causes none to be defined (incl. no defaults)
          Assert.Equal("foobar", p.Replace("foobar", context));
 
          // Try to use #if, it shouldn't work.
@@ -519,6 +521,42 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
 
          replacer.Replace("$$#define WriteProp = 'bar' /$$", context);
          Assert.Equal("bar", context.WriteProp);
+      }
+
+      [Fact]
+      public void Can_enable_tracing()
+      {
+         var stringWriter = new StringWriter();
+         var traceListener = new System.Diagnostics.TextWriterTraceListener(stringWriter);
+         Trace.Listeners.Add(traceListener);
+
+         var options = new TemplateOptions();
+         options.EnableTracing = true;
+
+         var p = new TemplateParser(options);
+
+         p.Replace("$$#if true$$ foobar $$/if$$", context);
+
+         traceListener.Flush();
+
+         Assert.True(stringWriter.ToString().Length > 0);
+      }
+
+      [Fact]
+      public void Tracing_is_disabled_by_default()
+      {
+         var stringWriter = new StringWriter();
+         var traceListener = new System.Diagnostics.TextWriterTraceListener(stringWriter);
+         Trace.Listeners.Add(traceListener);
+
+         var options = new TemplateOptions();
+         var p = new TemplateParser(options);
+
+         p.Replace("$$#if true$$ foobar $$/if$$", context);
+
+         traceListener.Flush();
+
+         Assert.Equal(0, stringWriter.ToString().Trim().Length);
       }
    }
 }

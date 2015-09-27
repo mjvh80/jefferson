@@ -103,7 +103,7 @@ namespace Jefferson.Directives
                if (haveParams)
                {
                   paramBinder = new _ParameterBinder();
-                  paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>();
+                  paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>(parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                   foreach (var p in @params)
                      paramBinder.ParamDecls.Add(p, Expression.Variable(typeof(String), p));
 
