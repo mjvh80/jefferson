@@ -303,5 +303,28 @@ namespace Jefferson.Tests
 
          Assert.Equal("9", r.Trim());
       }
+
+      [Fact]
+      public void Can_declare_inline_function()
+      {
+         var r = new TemplateParser(new DefineDirective()).Replace(@"
+            $$#define int a(int x) = x; b(y) = y + 'foo' /$$
+            $$a(2).GetType().FullName$$
+            $$b('bar')$$
+         ", context);
+
+         Assert.Contains("System.Int32", r);
+         Assert.Contains("barfoo", r);
+      }
+
+      [Theory]
+      [InlineData("$$#define a()) = 'h' /$$")][InlineData("$$#define a(a,) = 'foo' /$$")]
+      [InlineData("$$#define a(() = 'h' /$$")]
+      [InlineData("$$#define a() = '1'; b /$$")]
+      public void Detect_bad_define_syntax(String input)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(input, context));
+         Trace.WriteLine(error.Message);
+      }
    }
 }

@@ -37,6 +37,9 @@ namespace Jefferson.Directives
          var lidx = input.IndexOf(')', idx + 1);
          if (lidx < 0) throw parserContext.SyntaxError(idx, "Missing ')'.");
 
+         if (lidx < input.Length - 1 && input.Substring(lidx + 1).Trim().Length != 0)
+            throw parserContext.SyntaxError(idx, "expected end of parameter input");
+
          name = input.Substring(0, idx);
 
          if (lidx == idx + 1)
@@ -49,16 +52,24 @@ namespace Jefferson.Directives
             if (endIdx < 0) endIdx = lidx;
 
             var argStr = input.Substring(i, endIdx - i).Trim();
-            var spaceIdx = argStr.IndexOf(' ');
-            if (spaceIdx > 0 && spaceIdx < argStr.Length - 1)
-               @params.Add(Tuple.Create(argStr.Substring(0, spaceIdx), argStr.Substring(spaceIdx + 1)));
-            else
-               @params.Add(Tuple.Create("System.String", argStr)); // default type is string
+            @params.Add(_ParseTypedName(argStr));
 
             if (endIdx == lidx) break;
             i = endIdx + 1;
          }
          return @params.ToArray();
+      }
+
+      /// <summary>
+      /// Parses an expression of the form [type]? name. If type is not specified it defaults to System.String.
+      /// </summary>
+      private static Tuple<String, String> _ParseTypedName(String argStr)
+      {
+         var spaceIdx = argStr.IndexOf(' ');
+         if (spaceIdx > 0 && spaceIdx < argStr.Length - 1)
+            return Tuple.Create(argStr.Substring(0, spaceIdx), argStr.Substring(spaceIdx + 1));
+         else
+            return Tuple.Create("System.String", argStr); // default type is string
       }
 
       private static String _CSharpToDotNetType(String type, Boolean ignoreCase)
@@ -108,14 +119,17 @@ namespace Jefferson.Directives
             var name = eqIdx < 0 ? binding.Substring(0) : binding.Substring(0, eqIdx);
             name = name.Trim();
 
-            var @params = _ParseParameters(parserContext, name, out name);
-            if (eqIdx >= 0 && @params != null)
-               throw parserContext.SyntaxError(0, "Unexpected arguments found in empty define directive.");
+            var @params = _ParseParameters(parserContext, name, out name); Debug.Assert(@params == null || @params.Length > 0);
+            var typedName = _ParseTypedName(name);
+            name = typedName.Item2;
+
+            //if (eqIdx >= 0 && @params != null)
+            //   throw parserContext.SyntaxError(0, "Unexpected arguments found in empty define directive.");
 
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
 
-            if (eqIdx >= 0) 
+            if (eqIdx >= 0 && @params == null)
             {
                if (haveSource)
                   throw parserContext.SyntaxError(startIdx, "#define directive is not empty, unexpected '='");
@@ -127,6 +141,9 @@ namespace Jefferson.Directives
             {
                if (eqIdx < 0 && !haveSource)
                   throw parserContext.SyntaxError(startIdx, "Missing #define body.");
+
+               if (eqIdx >= 0 && haveSource)
+                  throw parserContext.SyntaxError(startIdx, "Unexpected #define body.");
 
                var haveParams = @params != null;
 
@@ -140,15 +157,13 @@ namespace Jefferson.Directives
                      var paramType = Type.GetType(_CSharpToDotNetType(p.Item1, parserContext.Options.IgnoreCase), throwOnError: false, ignoreCase: parserContext.Options.IgnoreCase);
                      if (paramType == null)
                         throw parserContext.SyntaxError(startIdx, "Could not resolve parameter type '{0}'", p.Item1);
+                     if (!ExpressionParser<Object, Object>.IsValidName(p.Item2))
+                        throw parserContext.SyntaxError(startIdx, "Invalid parameter name '{0}'", p.Item2); // todo: better positional error
                      paramBinder.ParamDecls.Add(p.Item2, Expression.Variable(paramType, p.Item2));
                   }
 
                   paramBinder.WrappedBinder = parserContext.ReplaceCurrentVariableBinder(paramBinder);
                }
-
-               // We have a body.
-               // Value in this case is not an expression, but the result of applying the template.
-               var parsedDefinition = parserContext.Parse<Object>(source);
 
                // Add an expression to get and compile at runtime.
                // Todo: this could perhaps cache, if used more than once.
@@ -159,6 +174,22 @@ namespace Jefferson.Directives
 
                if (haveParams)
                {
+                  CompiledExpression<Object, Object> @value = null;
+                  Type returnType = typeof(String);
+                  if (eqIdx > 0)
+                  {
+                     var rt = _CSharpToDotNetType(typedName.Item1, parserContext.Options.IgnoreCase);
+                     if (rt == "System.String")
+                        @value = parserContext.CompileExpression<Object>(binding.Substring(eqIdx + 1).Trim());
+                     else
+                     {
+                        // NOTE: the expression parser *knows* the actual outputtype, and returns it.
+                        // As we don't know it during C# compile time we specify Object and perform the conversion below. Thus this
+                        // conversion won't fail at runtime!
+                        @value = parserContext.CompileExpression<Object>(binding.Substring(eqIdx + 1).Trim());
+                        returnType = Type.GetType(rt, throwOnError: true, ignoreCase: parserContext.Options.IgnoreCase); // todo: errors
+                     }
+                  }
 
                   Type funcType;
                   switch (@params.Length)
@@ -172,18 +203,25 @@ namespace Jefferson.Directives
                         throw parserContext.SyntaxError(0, "#define directives support up to 5 parameters currently.");
                   }
 
-                  funcType = funcType.MakeGenericType(paramBinder.ParamDecls.Select(p => p.Value.Type).Concat(new[] { typeof(String) }).ToArray());
+                  funcType = funcType.MakeGenericType(paramBinder.ParamDecls.Select(p => p.Value.Type).Concat(new[] { returnType }).ToArray());
 
                   compiledVars.Add(name, new CompiledExpression<Object, Object>
                   {
                      Ast = Expression.Lambda<Func<Object, Object>>(
-                        // The result *value* here is not a string, but a Func<String, String> (for one parameter).
-                        // Thus when the define is used, the Func is evaluated.
+                        // The result *value* here is not a string, but e.g. a Func<String, String> (for one parameter).
+                        // Thus when the define is used, the Func is evaluated by the expression parser when it invokes the lambda.
                               Expression.Lambda(funcType,
-                                 Expression.Block(new[] { sb },
-                                    Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
-                                    Expression.Invoke(parsedDefinition, ctxParam, sb),
-                                       Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput()))),
+                                 @value == null
+                                 ?
+                        // The result is the body evaluated.
+                                 (Expression)Expression.Block(new[] { sb },
+                                      Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                                      Expression.Invoke(parserContext.Parse<Object>(source) /* PARSED BODY */, ctxParam, sb),
+                                         Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())))
+                                 :
+                        // The result is an inline function. Invoke it and convert the type.
+                        // Note that this type conversion will not fail at runtime!
+                                 Expression.Convert(Expression.Invoke(@value.Ast, Expression.Convert(ctxParam, typeof(Object))), @value.OutputType),
                                  paramBinder.ParamDecls.Values),
                               ctxParam),
                      OutputType = funcType
@@ -197,7 +235,7 @@ namespace Jefferson.Directives
                      Ast = Expression.Lambda<Func<Object, Object>>(
                               Expression.Block(new[] { sb },
                                  Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
-                                 Expression.Invoke(parsedDefinition, ctxParam, sb),
+                                 Expression.Invoke(parserContext.Parse<Object>(source) /* PARSED BODY */, ctxParam, sb),
                                  Expression.Convert(
                                     Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
                                     typeof(Object))),
