@@ -17,6 +17,17 @@ $$#if ENABLE_FEATURE_FOO$$
 $$/if$$
 ```
 
+It can also be useful to *parameterize* some configuration to avoid repeating it.
+
+```
+$$#define location(url)$$
+   <location url="$$url$$" ... />
+$$/define
+
+$$location('www.example.com')$$
+$$location('www.google.com')$$
+```
+
 Jefferson can also be used for more general template processing, e.g.
 
 ```
@@ -103,11 +114,12 @@ $$/each$$
 Here, again, the `$$#else$$` is optional. The `$$#else$$` clause is only executed if the enumerable is empty. Note that `each` introduces a new scope, namely the current object of the enumerator. This means that `<exprA>` is evaluated in a different context/scope than `<exprB>`.
 
 ### `$$#block$$`
-The block directive does very little, it simply introduces a new scope. See the `$$#let$$` directive for an example of how this may be useful.
+The block directive introduces a *block scope*. This means that variables set within the block won't be available outside of it.
+
 Syntax:
 ```
 $$#block$$
-   ...
+   $$#define foo = 'within block' /$$
 $$/block$$
 ```
 
@@ -131,7 +143,7 @@ $$#block$$
    $$/let$$
 $$/block$$
 ```
-Note the use of the `$1` namespace to access the parent scope here.
+Note the use of the `$1` namespace to access the parent scope here (`$0` is the current scope).
 
 The *let* directive has another syntax form which can be used to reuse "snippets" of a source file. It binds a variable to the output of the templater like so:
 
@@ -171,15 +183,39 @@ $$/define$$
 ```
 
 This can then be called using, e.g. `$$hello('Marcus')$$`.
-Note that currently parameter values must be strings (or will be converted to string).
+Note that currently parameter values must be strings (or will be converted to string) unless specified. Other variations:
+
+```
+$$#define int parse(x) = System.Int32.Parse(x) /$$
+$$#define int foo(int a, int b) = a + b /$$
+$$#define foo(int x)$$
+   $$x + 7$$
+$$/define$$
+```
+Note: when no type is specified, `string` is assumed. When the `#define` directive has a body, no type specifier is allowed because it is set to `string`.
 
 This differs from the `#let` directive in that `#let` only binds a name within the statement, without affecting the context in any way. `#define` causes global changes visible accross files. Note that the `Jefferson.FileProcessing` adds support for file-level scopes. This can be used to read in a tree of files in which for every file the variables of its ancestors are accessible but it cannot alter these.
+
+## Case Sensitivity and Cultures
+
+By default Jefferson is case insensitive in how variables resolve and things like string comparison. This can be made case sensitive using a `TemplateOptions` instance passed to the constructor of the parser, however, no more granular control (e.g. case insensitive resolution but case sensitive string matching) is currently possible.
+
+It is also possible to use a non-invariant culture, i.e. the current Thread's culture using another option.
+
+E.g. in the `NL-nl` locale and cultures enabled
+
+`$$ 1.2 $$`
+
+outputs
+
+`1,2`
+
 
 FAQ
 ===
 
 #### Why did you create this?
-I'm not a believer in creationism, this evolved from more humble beginnings.
+I'm not a believer in creationism, this evolved from more humble beginnings and then just ... grew.
 
 #### Is it fast?
 It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance. With regards to parsing the focus has been to keep the parser relatively simple vs as performant as compturely possible.

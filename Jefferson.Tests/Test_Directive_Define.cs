@@ -318,13 +318,38 @@ namespace Jefferson.Tests
       }
 
       [Theory]
-      [InlineData("$$#define a()) = 'h' /$$")][InlineData("$$#define a(a,) = 'foo' /$$")]
+      [InlineData("$$#define a()) = 'h' /$$")]
+      [InlineData("$$#define a(a,) = 'foo' /$$")]
       [InlineData("$$#define a(() = 'h' /$$")]
       [InlineData("$$#define a() = '1'; b /$$")]
       public void Detect_bad_define_syntax(String input)
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(input, context));
          Trace.WriteLine(error.Message);
+      }
+
+      [Fact]
+      public void When_define_has_body_returntype_must_be_string()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+           $$#define string foobar(x)$$
+              $$x$$
+           $$/define$$
+           $$#define string foobar()$$
+           $$/define$$
+           ", context));
+
+         Assert.Contains("Unexpected return type specification", error.Message);
+
+         error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+           $$#define int foobar(int x)$$
+              $$x$$
+           $$/define$$
+
+           $$foobar(2) + 3$$
+           ", context));
+
+         Assert.Contains("Unexpected return type specification", error.Message);
       }
    }
 }

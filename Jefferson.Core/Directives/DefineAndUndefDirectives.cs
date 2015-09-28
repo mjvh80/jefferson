@@ -190,6 +190,8 @@ namespace Jefferson.Directives
                         returnType = Type.GetType(rt, throwOnError: true, ignoreCase: parserContext.Options.IgnoreCase); // todo: errors
                      }
                   }
+                  else if (typedName.Item1 != "System.String")
+                     throw parserContext.SyntaxError(startIdx, "Unexpected return type specification. Because #define has a body, return type is always System.String.");
 
                   Type funcType;
                   switch (@params.Length)

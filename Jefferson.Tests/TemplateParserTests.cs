@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
 using Xunit;
 
 namespace Jefferson.Tests
@@ -164,6 +165,16 @@ namespace Jefferson.Tests
          // If the result of a method call is another variable expression we cannot at compile time handle this.
          Assert.Equal("A $$foobar$$ B", replacer.Replace("A $$recursive$$ B", context));
          Assert.Equal("A qux B", replacer.ReplaceDeep("A $$recursive$$ B", context));
+      }
+
+      [Fact]
+      public void Can_use_cultures()
+      {
+         Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("NL-nl");
+
+         var result = new TemplateParser(new TemplateOptions { UseCurrentCulture = true }).Replace("$$1.2$$", context);
+
+         Assert.Equal("1,2", result.Trim());
       }
 
       [Fact]
