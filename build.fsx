@@ -22,6 +22,7 @@ let publishNuGet = Boolean.Parse(getBuildParamOrDefault "publishNuGet" "false")
 
 let coreBuildDir = "Jefferson.Core/bin" / buildMode
 let procBuildDir = "Jefferson.FileProcessing/bin" / buildMode
+let jefBuildDir = "Jefferson.Build/bin" / buildMode
 let coreTestBuildDir = "Jefferson.Tests/bin" / buildMode
 
 let getSemanticVersion (msVersion: Version) = msVersion.Major.ToString() + "." + msVersion.Minor.ToString() + "." + msVersion.Build.ToString()
@@ -29,6 +30,7 @@ let nugetVersion (asm) = getBuildParamOrDefault "pkgVersion" (asm |> VersionHelp
 
 let jeffersonCsproj = !! ("./Jefferson.Core/*.csproj")
 let jeffersonProcCsProj = !! ("./Jefferson.FileProcessing/*.csproj")
+let jeffersonBuildCsProj = !! ("./Jefferson.Build/*.csproj")
 let jeffersonTestCsproj = !! ("./Jefferson.Tests/*.csproj")
 
 let xunitConsole = "packages/xunit.runners.1.9.2/tools/xunit.console.clr4.exe"
@@ -43,6 +45,10 @@ trace (" -- publish nuget: " + publishNuGet.ToString())
 Target "BuildCore" <| fun _ ->
    MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonCsproj
    |> Log "Build Core Output"
+
+Target "BuildJeffBuild" <| fun _ ->
+   MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonBuildCsProj
+   |> Log "Build Jefferson.Build Output"
 
 Target "BuildFileProc" <| fun _ ->
    MSBuild null msbuildTarget ["Configuration", buildMode] jeffersonProcCsProj
@@ -91,6 +97,9 @@ Target "Default" <| (fun _ -> trace "Default Target")
    ==> "BuildCore"
 
 "Default"
+   ==> "BuildFileProc"
+
+"BuildJeffBuild"
    ==> "BuildFileProc"
 
 "Default"

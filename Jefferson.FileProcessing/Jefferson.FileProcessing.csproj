@@ -68,7 +68,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PreBuildEvent>$(SolutionDir)Jefferson.Build\bin\$(ConfigurationName)\Jefferson.Build.exe "$(TargetDir)Jefferson.dll" "$(ProjectDir)Properties\AssemblyInfo.tmpl.cs" "$(ProjectDir)Properties\AssemblyInfo.cs"</PreBuildEvent>
+    <PreBuildEvent>"$(ProjectDir)..\Jefferson.Build\bin\$(ConfigurationName)\Jefferson.Build.exe" "$(ProjectDir)..\Jefferson.Build\bin\$(ConfigurationName)\Jefferson.dll"  "$(ProjectDir)Properties\AssemblyInfo.tmpl.cs" "$(ProjectDir)Properties\AssemblyInfo.cs"</PreBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
