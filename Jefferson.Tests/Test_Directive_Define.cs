@@ -283,12 +283,25 @@ namespace Jefferson.Tests
       public void Cannot_overload_with_define()
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
-            $$#define a(b)$$
+            $$#define a(x)$$
                $$#define a(b, c)$$
                    $$a('just one param')$$
                $$/define$$
             $$/define$$
          ", context));
+      }
+
+      [Fact]
+      public void Can_specify_define_argument_type()
+      {
+         var r = new TemplateParser(new DefineDirective()).Replace(@"
+            $$#define a(int x)$$
+               $$x + 2$$
+            $$/define$$
+            $$a(7)$$
+         ", context);
+
+         Assert.Equal("9", r.Trim());
       }
    }
 }

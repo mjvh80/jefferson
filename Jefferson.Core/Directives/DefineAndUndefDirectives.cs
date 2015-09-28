@@ -1,6 +1,7 @@
 ﻿using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -24,7 +25,7 @@ namespace Jefferson.Directives
       }
 
       // note: return null not empty
-      private String[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
+      private Tuple<String, String>[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
       {
          var idx = input.IndexOf('(');
          if (idx < 0)
@@ -41,18 +42,48 @@ namespace Jefferson.Directives
          if (lidx == idx + 1)
             return null; // () no params
 
-         var @params = new List<String>();
+         var @params = new List<Tuple<String, String>>();
          for (var i = idx + 1; i < input.Length; )
          {
             var endIdx = input.IndexOf(',', i);
             if (endIdx < 0) endIdx = lidx;
 
-            @params.Add(input.Substring(i, endIdx - i).Trim());
+            var argStr = input.Substring(i, endIdx - i).Trim();
+            var spaceIdx = argStr.IndexOf(' ');
+            if (spaceIdx > 0 && spaceIdx < argStr.Length - 1)
+               @params.Add(Tuple.Create(argStr.Substring(0, spaceIdx), argStr.Substring(spaceIdx + 1)));
+            else
+               @params.Add(Tuple.Create("System.String", argStr)); // default type is string
 
             if (endIdx == lidx) break;
             i = endIdx + 1;
          }
          return @params.ToArray();
+      }
+
+      private static String _CSharpToDotNetType(String type, Boolean ignoreCase)
+      {
+         if (ignoreCase)
+            type = type.ToLowerInvariant();
+
+         switch (type)
+         {
+            case "int": return "System.Int32";
+            case "uint": return "System.UInt32";
+            case "long": return "System.Int64";
+            case "ulong": return "System.UInt64";
+            case "short": return "System.Int16";
+            case "ushort": return "System.UInt16";
+            case "bool": return "System.Boolean";
+            case "decimal": return "System.Decimal";
+            case "byte": return "System.UInt8";
+            case "sbyte": return "System.Int8";
+            case "string": return "System.String";
+            case "float": return "System.Single";
+            case "double": return "System.Double";
+            case "object": return "System.Object";
+            default: return type;
+         }
       }
 
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
@@ -84,7 +115,7 @@ namespace Jefferson.Directives
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
 
-            if (eqIdx >= 0)
+            if (eqIdx >= 0) 
             {
                if (haveSource)
                   throw parserContext.SyntaxError(startIdx, "#define directive is not empty, unexpected '='");
@@ -94,7 +125,7 @@ namespace Jefferson.Directives
             }
             else
             {
-               if (!haveSource)
+               if (eqIdx < 0 && !haveSource)
                   throw parserContext.SyntaxError(startIdx, "Missing #define body.");
 
                var haveParams = @params != null;
@@ -105,7 +136,12 @@ namespace Jefferson.Directives
                   paramBinder = new _ParameterBinder();
                   paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>(parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                   foreach (var p in @params)
-                     paramBinder.ParamDecls.Add(p, Expression.Variable(typeof(String), p));
+                  {
+                     var paramType = Type.GetType(_CSharpToDotNetType(p.Item1, parserContext.Options.IgnoreCase), throwOnError: false, ignoreCase: parserContext.Options.IgnoreCase);
+                     if (paramType == null)
+                        throw parserContext.SyntaxError(startIdx, "Could not resolve parameter type '{0}'", p.Item1);
+                     paramBinder.ParamDecls.Add(p.Item2, Expression.Variable(paramType, p.Item2));
+                  }
 
                   paramBinder.WrappedBinder = parserContext.ReplaceCurrentVariableBinder(paramBinder);
                }
@@ -123,17 +159,20 @@ namespace Jefferson.Directives
 
                if (haveParams)
                {
+
                   Type funcType;
                   switch (@params.Length)
                   {
-                     case 1: funcType = typeof(Func<String, String>); break;
-                     case 2: funcType = typeof(Func<String, String, String>); break;
-                     case 3: funcType = typeof(Func<String, String, String, String>); break;
-                     case 4: funcType = typeof(Func<String, String, String, String, String>); break;
-                     case 5: funcType = typeof(Func<String, String, String, String, String, String>); break;
+                     case 1: funcType = typeof(Func<,>); break;
+                     case 2: funcType = typeof(Func<,,>); break;
+                     case 3: funcType = typeof(Func<,,,>); break;
+                     case 4: funcType = typeof(Func<,,,,>); break;
+                     case 5: funcType = typeof(Func<,,,,,>); break;
                      default:
                         throw parserContext.SyntaxError(0, "#define directives support up to 5 parameters currently.");
                   }
+
+                  funcType = funcType.MakeGenericType(paramBinder.ParamDecls.Select(p => p.Value.Type).Concat(new[] { typeof(String) }).ToArray());
 
                   compiledVars.Add(name, new CompiledExpression<Object, Object>
                   {
@@ -151,6 +190,8 @@ namespace Jefferson.Directives
                   });
                }
                else
+               {
+                  Debug.Assert(@params == null);
                   compiledVars.Add(name, new CompiledExpression<Object, Object>
                   {
                      Ast = Expression.Lambda<Func<Object, Object>>(
@@ -163,6 +204,7 @@ namespace Jefferson.Directives
                               ctxParam),
                      OutputType = typeof(String)
                   });
+               }
 
                if (haveParams)
                {
