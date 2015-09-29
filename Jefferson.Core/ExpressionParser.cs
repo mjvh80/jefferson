@@ -47,18 +47,23 @@ namespace Jefferson
       /// <summary>
       /// Generates symbols that may aid in debugging.
       /// </summary>
-      AddPdbGenerator = 1,
+      AddPdbGenerator = 1 << 0,
 
       /// <summary>
       /// Ignore case in things like string matching or name resolving.
       /// </summary>
-      IgnoreCase = 2,
+      IgnoreCase = 1 << 1,
 
       /// <summary>
       /// Use the current culture for things like ToString.
       /// Note that numbers are always parsed in the invariant culture.
       /// </summary>
-      UseCurrentCulture = 4,
+      UseCurrentCulture = 1 << 2,
+
+      /// <summary>
+      /// If the expression is empty or whitespace or comments, treat it as the empty string.
+      /// </summary>
+      EmptyExpressionIsEmptyString = 1 << 3
    }
 
    public class CompiledExpression<TContext, TOutput>
@@ -77,14 +82,11 @@ namespace Jefferson
 
    internal static class _GenericHelpers
    {
-      public static Expression CallHelper(this Expression e, String method, Boolean inline = false)
+      public static Expression CallInline(this Expression e, String method)
       {
          var f = (LambdaExpression)typeof(_GenericHelpers).GetMethod(method).MakeGenericMethod(e.Type).Invoke(null, null);
 
-         if (inline)
-            return _ReplaceParameterVisitor.ReplaceParamWith(f.Parameters[0], e, f.Body);
-         else
-            return Expression.Invoke(f, e);
+         return _ReplaceParameterVisitor.ReplaceParamWith(f.Parameters[0], e, f.Body);
       }
 
       public static Expression<Func<T, Boolean>> IsZero<T>()
@@ -199,13 +201,13 @@ namespace Jefferson
       /// <summary>
       /// This is useful to allow for statements in the form of delegates. For example see usage.
       /// </summary>
-      private static Expression<Func<TInput, TOutput2>> _WrapExpr<TInput, TOutput2>(Expression<Func<TInput, TOutput2>> input, Expression<Func<Func<TInput, TOutput2>, Func<TInput, TOutput2>>> expr, Boolean inline = false)
+      private static Expression<Func<TInput, TOutput2>> _WrapExprInline<TInput, TOutput2>(Expression<Func<TInput, TOutput2>> input, Expression<Func<Func<TInput, TOutput2>, Func<TInput, TOutput2>>> expr)
       {
          var p = Expression.Parameter(typeof(TInput));
-         if (inline) // Avoid one call, it's much harder to avoid the other.
-            return Expression.Lambda<Func<TInput, TOutput2>>(Expression.Invoke(_ReplaceParameterVisitor.ReplaceParamWith(expr.Parameters[0], input, expr.Body), p), p);
-         else
-            return Expression.Lambda<Func<TInput, TOutput2>>(Expression.Invoke(Expression.Invoke(expr, input), p), p);
+         return Expression.Lambda<Func<TInput, TOutput2>>(Expression.Invoke(_ReplaceParameterVisitor.ReplaceParamWith(expr.Parameters[0], input, expr.Body), p), p);
+
+         // Not inline:
+         // return Expression.Lambda<Func<TInput, TOutput2>>(Expression.Invoke(Expression.Invoke(expr, input), p), p);
       }
 
       /// <summary>
@@ -285,7 +287,7 @@ namespace Jefferson
       {
          #region Parser
 
-         if (String.IsNullOrEmpty(expr))
+         if (String.IsNullOrEmpty(expr) && (flags & ExpressionParsingFlags.EmptyExpressionIsEmptyString) == 0)
             throw SyntaxException.Create("null or empty expression");
 
          if (actualContextType == null)
@@ -328,16 +330,35 @@ namespace Jefferson
 
          #region Parsing Utilities
 
-         Action advanceWhitespace = () => { for (; i < expr.Length && Char.IsWhiteSpace(expr[i]); i += 1) ; };
+         Func<Boolean> skipWhitespace = () => { var j = i; for (; i < expr.Length && Char.IsWhiteSpace(expr[i]); i += 1) ; return i > j; };
+         Func<Boolean> skipComments = () =>
+         {
+            if (i < expr.Length - 1 && expr[i] == '/' && expr[i + 1] == '/')
+            {
+               if (i == expr.Length - 2) i = expr.Length;
+               else
+               {
+                  i = Math.Min(expr.IndexOf('\n', i + 2), expr.IndexOf('\r', i + 2));
+                  if (i < 0) i = expr.Length;
+                  else i += 1;
+               }
+               return true;
+            }
+            return false;
+         };
+
+         Action advanceWhitespace = () => { while (skipWhitespace() || skipComments()) { } };
+
          Func<String, Boolean> advanceIfMatch = (s) =>
          {
-            var r = new Regex("^" + s, RegexOptions.CultureInvariant);
-            var m = r.Match(expr.Substring(i));
+            var r = new Regex("\\G(" + s + ")", RegexOptions.CultureInvariant);
+            var m = r.Match(expr, startat: i);
             if (!m.Success) return false;
             i += m.Length;
             advanceWhitespace();
             return true;
          };
+         Func<String, String> optAdvance = s => { var j = i; if (advanceIfMatch(s)) return expr.Substring(j, i - j); return null; };
          Func<Func<Boolean>, String> advanceWhile = c => { var token = ""; for (; i < expr.Length && c(); i++) { token += expr[i]; } return token; };
          Throw throwExpected = (s, args) => { throw SyntaxException.Create(expr, i, "Expected {0}", String.Format(s, args)); };
          Action<String> expectAdvance = (s) => { if (!advanceIfMatch(s)) throwExpected(s); };
@@ -387,7 +408,7 @@ namespace Jefferson
             if (e.IsNullConstant()) return _false; // shortcut
 
             if (e.Type.IsValueType)
-               return Expression.Not(e.CallHelper("IsZero", inline: true));
+               return Expression.Not(e.CallInline("IsZero"));
 
             // Strings.
             if (e._is_<String>()) return _GetExpr<String, Boolean>(e, s => s != null && s.Length != 0, inline: false);
@@ -895,25 +916,34 @@ namespace Jefferson
                      }
                   }
 
+                  // We could support F#'s y and s, but I think that's going a bit too far probably.
+                  var suffix = optAdvance("[mMdDfF]|([uU][lL]?)|([lL][uU]?)");
+                  Type numType;
+                  if (suffix == null)
+                     numType = isDouble ? typeof(Double) : typeof(Int32);
+                  else
+                     switch (suffix = suffix.ToUpperInvariant())
+                     {
+                        case "M": numType = typeof(Decimal); isDouble = true; break;
+                        case "D": numType = typeof(Double); isDouble = true; break;
+                        case "F": numType = typeof(Single); isDouble = true; break;
+                        default:
+                           if (suffix.Contains("L")) numType = suffix.Contains("U") ? typeof(UInt64) : typeof(Int64);
+                           else numType = suffix.Contains("U") ? typeof(UInt32) : typeof(Int32);
+                           break;
+                     }
+
                   if (isHex && isDouble)
                      throwExpected("either hex or double number, got '{0}'", token);
 
-                  if (isDouble)
-                  {
-                     Double asDouble;
-                     if (!Double.TryParse(token, NumberStyles.Float, NumberFormatInfo.InvariantInfo, out asDouble))
-                        throwExpected("valid double, got '{0}'", token);
-                     unitResult = Expression.Constant(asDouble);
-                  }
-                  else
-                  {
-                     Int32 asInt = 0;
-                     if (isHex && !Int32.TryParse(token, NumberStyles.HexNumber, NumberFormatInfo.InvariantInfo, out asInt))
-                        throwExpected("valid hex number, got '{0}'", token);
-                     if (!isHex && !Int32.TryParse(token, NumberStyles.Integer, NumberFormatInfo.InvariantInfo, out asInt))
-                        throwExpected("valid integer, got '{0}'", token);
-                     unitResult = Expression.Constant(asInt);
-                  }
+                  var parseMethod = numType.GetMethods().Where(m => m.Name == "TryParse" && m.GetParameters().Length == 4).Single(); // todo?
+                  var numFlags = isDouble ? NumberStyles.Float : (isHex ? NumberStyles.HexNumber : NumberStyles.Integer);
+
+                  var args = new Object[] { token, numFlags, NumberFormatInfo.InvariantInfo, null };
+                  if (!(Boolean)parseMethod.Invoke(null, args))
+                     throwExpected("valid number, got '{0}' - expected a {1}number of type {2}", token, isHex ? "hex " : "", numType.FullName);
+
+                  unitResult = Expression.Constant(args[3], numType);
                }
                else if (startChar == '∞')
                {
@@ -981,7 +1011,9 @@ namespace Jefferson
             // Start actual parsing, begin by stripping initial whitespace.
             advanceWhitespace();
 
-            var body = expression();
+            // If the whole expression is empty (or just whitespace and comments), we'll consider that an expression with value "".
+            var allowEmpty = i == expr.Length && (flags & ExpressionParsingFlags.EmptyExpressionIsEmptyString) != 0;
+            var body = allowEmpty ? Expression.Constant("") : expression();
 
             // The actual type of the expression. E.g. when using an IEnumerable<T> TOutput may only be IEnumerable<Object>
             // but we have inferred the *actual* type so return that too.
@@ -1017,7 +1049,7 @@ namespace Jefferson
                   }
                };
 
-               result = _WrapExpr<TContext, TOutput>(result, f => tryFin(f), inline: true);
+               result = _WrapExprInline<TContext, TOutput>(result, f => tryFin(f));
             }
 
             return new CompiledExpression<TContext, TOutput>

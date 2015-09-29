@@ -87,6 +87,13 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Comments_can_effectively_disable_directives()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace("x = $$//#define x$$", context);
+         Assert.Equal("x =", result.Trim());
+      }
+
+      [Fact]
       public void Undef_directive_within_let_directive_does_not_work_if_same_name()
       {
          try

@@ -151,6 +151,37 @@ namespace Jefferson.Tests
          Assert.True(_ParseAndRun("-1 # " + ns + ".Flags.Foo"));
       }
 
+      [Fact]
+      public void All_overloaded_constructors_work()
+      {
+         var p = new ExpressionParser<Context, String>();
+         p.ParseExpression("Actual", new ActualContext());
+
+         Assert.Throws<ArgumentNullException>(() => p.ParseExpression("Actual", (ActualContext)null));
+
+         p.ParseExpression<ActualContext>("Actual");
+      }
+
+      [Fact]
+      public void Actual_context_type_is_verified()
+      {
+         var p = new ExpressionParser<Context, String>();
+         Assert.Throws<SyntaxException>(() => p.ParseExpression("Actual", "i'm not of the right type"));
+      }
+
+      [Fact]
+      public void TryParseExpression_works()
+      {
+         var p = new ExpressionParser<ActualContext, String>();
+
+         ExpressionDelegate<ActualContext, String> result;
+         Assert.True(p.TryParseExpression("Actual = 'ACTUAL'", out result));
+         Assert.Equal("True", result(new ActualContext()));
+
+         Assert.False(p.TryParseExpression("Actualeee", out result));
+         Assert.Null(result);
+      }
+
       //[Fact]
       //public void Foobar()
       //{
@@ -202,8 +233,28 @@ namespace Jefferson.Tests
          Assert.False(result);
 
          // Note, however, that null matches "nothing".
-         result = parser.ParseExpression("NullString =~ //i")(new Context());
+         result = parser.ParseExpression("NullString =~ /(?:)/i")(new Context());
          Assert.True(result);
+      }
+
+      [Fact]
+      public void Empty_regex_is_not_valid_as_it_denotes_a_comment()
+      {
+         // This is the same behaviour as seen in e.g. JavaScript.
+
+         var parser = new PredicateParser<Context>();
+         Assert.Throws<SyntaxException>(() => parser.ParseExpression("NullString =~ //i")(new Context()));
+      }
+
+      [Theory]
+      [InlineData(@"1//")][InlineData("1   //")][InlineData("1  //   ")]
+      [InlineData(@" 1//")][InlineData(" 1   //")][InlineData(" 1  //   ")]
+      [InlineData(@"1 + // foobar
+                    2// blah ")]
+      public void Can_skip_comments_in_expressions(String source)
+      {
+         var p = new PredicateParser<Context>();
+         var result = p.ParseExpression(source)(new Context());
       }
 
       [Fact]

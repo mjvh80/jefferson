@@ -367,6 +367,28 @@ $$/if$$", context));
          }
       }
 
+      [Fact]
+      public void Allow_empty_expressions()
+      {
+         var r = replacer.Replace("foobar: $$$$ $$ $$ $$//$$ $$ //$$ $$// $$ $$ // $$", context);
+         Assert.Equal("foobar:", r.Trim());
+      }
+
+      [Fact]
+      public void Empty_expression_has_type_string()
+      {
+         var result = new TemplateParser(new LetDirective()).Replace("$$#let a=$$ $$a.GetType().Name$$ $$/let$$", context);
+         Assert.Equal("String", result.Trim());
+      }
+
+      [Fact]
+      public void Debug_viewer_works()
+      {
+         Func<String, Int32> f = s => Int32.Parse(s);
+         var dbgCtx = new ExpressionParser<String, Int32>._ExpressionDebugContext("foo!", f);
+         Assert.Equal("foo!", dbgCtx.ToString());
+      }
+
       public class TestDirective : IDirective
       {
          public String Name { get; set; }
@@ -505,6 +527,17 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
          ", context).Trim();
 
          Assert.Equal("True", result);
+
+
+         result = replacer.Replace(@"
+ 
+             $$#define foo = Jefferson.Tests.EnumTest.Foo/$$
+
+             $$ 'Bar' = foo $$
+
+         ", context).Trim();
+
+         Assert.Equal("False", result);
       }
 
       [Fact]

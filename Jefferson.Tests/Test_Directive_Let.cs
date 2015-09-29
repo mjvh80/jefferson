@@ -120,12 +120,19 @@ $$/let$$
 
       [Theory]
       [InlineData("$$#let a= 'book'/$$"), InlineData("$$#let a = 'boo'//$$")]
-      [InlineData("$$#let$$$$/let$$"), InlineData("$$#let a=$$ $$/let$$")]
+      [InlineData("$$#let$$$$/let$$")]
       [InlineData("$$#let a='b'$$")]
       [InlineData("$$#let 1a='b'$$$$/let$$")]
       public void Let_bad_syntax_facts(String input)
       {
          Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));
+      }
+
+      [Theory]
+      [InlineData("$$#let a=$$ $$/let$$")] // OK since we allowed empty expressions as empty string
+      public void Let_syntax_edge_case(String edgeCase)
+      {
+         new TemplateParser(new LetDirective()).Replace(edgeCase, new TestContext());
       }
 
       [Fact]

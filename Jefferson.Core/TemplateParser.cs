@@ -49,7 +49,7 @@ namespace Jefferson
       /// <summary>
       /// Creates a template parser with the given directives and uses default options.
       /// </summary>
-      public TemplateParser(params IDirective[] directives): this(new TemplateOptions(), directives) {}
+      public TemplateParser(params IDirective[] directives) : this(new TemplateOptions(), directives) { }
 
       public TemplateParser(TemplateOptions options) : this(options, _GetDefaultDirectives()) { }
 
@@ -418,7 +418,7 @@ namespace Jefferson
 
                   PositionOffsets.Pop();
                }
-               else if (idx + 2 < source.Length && source[idx + 2] == '/')
+               else if (idx + 2 < source.Length && source[idx + 2] == '/' && (idx + 3 == source.Length || source[idx + 3] != '/'))
                   throw SyntaxError(idx, "Unexpected '{0}' found.", source.Substring(idx, 3)); // todo: improve this error
                else
                {
@@ -529,7 +529,7 @@ namespace Jefferson
 
             // Parse the expression, compile it and run it.
 
-            var flags = ExpressionParsingFlags.None;
+            var flags = ExpressionParsingFlags.EmptyExpressionIsEmptyString; // this allows $$$$ in source (useful for things like $$//...$$)
 
             if (this.Options.IgnoreCase)
                flags |= ExpressionParsingFlags.IgnoreCase;
