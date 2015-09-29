@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Linq.Expressions;
+using System.Reflection;
 using Xunit;
+using System.Linq;
+using Xunit.Sdk;
 
 namespace Jefferson.Tests
 {
@@ -20,6 +23,61 @@ namespace Jefferson.Tests
          Assert.Throws<ArgumentNullException>(() => Ensure.NotNull(null, "foobar"));
          Assert.Throws<ArgumentException>(() => Ensure.NotNullOrEmpty("", "blah"));
          Assert.Throws<ArgumentException>(() => Ensure.NotNullOrEmpty("", null));
+      }
+
+      [Fact]
+      public void Utils_debug_asserts_work()
+      {
+         Assert.Throws<TraceAssertException>(() => Utils.DebugAssert(false));
+         Assert.Throws<TraceAssertException>(() => Utils.DebugAssert(false, "foo"));
+         Assert.Throws<TraceAssertException>(() => Utils.AssertNotNull(null, null));
+         Assert.Throws<TraceAssertException>(() => Utils.AssertNotNull(null, "oue"));
+         Utils.DebugAssert(true);
+         Utils.DebugAssert(true, "aoue");
+         Utils.AssertNotNull("oue");
+         Utils.AssertNotNull("oue", "oeu");
+      }
+
+      private static void _Void() { }
+
+      [Fact]
+      public void Can_get_constructors_with_utils()
+      {
+         Assert.Throws<InvalidOperationException>(() => Utils.GetConstructor(() => _Void()));
+      }
+
+      [Fact]
+      public void Some_other_utils_tests()
+      {
+         Assert.Throws<Exception>(() => Utils.FindTypeInAppDomain("aoeueuaoueaoueaoue", true));
+      }
+
+      [Fact]
+      public void SyntaxException_tests()
+      {
+         SyntaxException.Create(new Exception(), null, null);
+         SyntaxException.Create(null, "foo {0}", "bar");
+      }
+
+      [Fact]
+      public void Extensions_ToStringInvariant_work()
+      {
+         foreach(var m in typeof(Extensions._Extensions).GetMethods(BindingFlags.Static | BindingFlags.Public).Where(m => m.Name == "ToStringInvariant"))
+         {
+            var p = m.GetParameters()[0];
+            if (p.ParameterType.IsGenericType)
+            {
+               // Nullable, test it with null.
+               m.Invoke(null, new Object[] { null });
+               Assert.True(p.ParameterType.GetGenericArguments()[0].IsValueType);
+               m.Invoke(null, new Object[] { Activator.CreateInstance(p.ParameterType.GetGenericArguments()[0]) });
+            }
+            else
+            {
+               Assert.True(p.ParameterType.IsValueType);
+               m.Invoke(null, new Object[] { Activator.CreateInstance(p.ParameterType) });
+            }
+         }
       }
    }
 }

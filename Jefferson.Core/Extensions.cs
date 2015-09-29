@@ -18,10 +18,10 @@ namespace Jefferson.Extensions
          return Expression.Convert(Expression.Convert(e, typeof(Object)), typeof(TType));
       }
 
-      public static Expression OptCast<TType>(this Expression e)
-      {
-         return e.IfTypeIs<TType>(e.DynCast<TType>(), e);
-      }
+      //public static Expression OptCast<TType>(this Expression e)
+      //{
+      //   return e.IfTypeIs<TType>(e.DynCast<TType>(), e);
+      //}
 
       public static Expression IfTypeIs<TType>(this Expression e, Expression then, Expression @else)
       {

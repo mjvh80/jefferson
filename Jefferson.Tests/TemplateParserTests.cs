@@ -34,7 +34,7 @@ namespace Jefferson.Tests
 
    public class TestContext : IndexerVariableBinder
    {
-      private Dictionary<String, Func<Object>> _mVariables; 
+      private Dictionary<String, Func<Object>> _mVariables;
       private Dictionary<String, Type> _mTypes; // = new Dictionary<String, Type>();
 
       public TestContext(Boolean caseSensitive = false)
@@ -365,6 +365,15 @@ $$/if$$", context));
          {
             // OK
          }
+      }
+
+      [Fact]
+      public void Can_make_templates_readonly()
+      {
+         var parser = new TemplateParser(new DefineDirective(), new UndefDirective());
+         parser.Compile<TestContext>("FieldOnCtx", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter());
+         Assert.Throws<SyntaxException>(() => parser.Compile<TestContext>("$$#define FieldOnCtx = 'foobar' /$$", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter()));
+         Assert.Throws<SyntaxException>(() => parser.Compile<TestContext>("$$#undef FieldOnCtx /$$", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter())); 
       }
 
       [Fact]

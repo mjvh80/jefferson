@@ -924,7 +924,7 @@ namespace Jefferson
                   else
                      switch (suffix = suffix.ToUpperInvariant())
                      {
-                        case "M": numType = typeof(Decimal); isDouble = true; break;
+                        case "M": numType = typeof(Decimal); isDouble = true; break; // not sure about this..
                         case "D": numType = typeof(Double); isDouble = true; break;
                         case "F": numType = typeof(Single); isDouble = true; break;
                         default:

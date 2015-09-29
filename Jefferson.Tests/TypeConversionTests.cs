@@ -15,6 +15,8 @@ namespace Jefferson.Tests
          public Int32 i4 = 1;
          public Int64 i8 = 3;
 
+         public Int16 i2 = 2;
+
          public UInt32 maxu4 = UInt32.MaxValue;
          public UInt64 maxu8 = UInt64.MaxValue;
          public Int64 zi8 = 0;
@@ -30,6 +32,9 @@ namespace Jefferson.Tests
 
          result = Parser.Replace("$$ (i8 + i4).GetType().Name $$", new TestContext());
          Assert.Equal("Int64", result.Trim());
+
+         result = Parser.Replace("$$ (i2 + 0).GetType().Name $$", new TestContext());
+         Assert.Equal("Int32", result);
       }
 
       [Theory]

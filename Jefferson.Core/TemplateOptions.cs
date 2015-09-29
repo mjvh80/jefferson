@@ -7,8 +7,6 @@ namespace Jefferson
    /// </summary>
    public class TemplateOptions
    {
-      public TemplateOptions Clone() { return (TemplateOptions)this.MemberwiseClone(); }
-
       public Boolean IgnoreCase = true;
 
       public Boolean EnableTracing = false;

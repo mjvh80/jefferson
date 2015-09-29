@@ -104,20 +104,6 @@ namespace Jefferson
       #region Debug Assertions
 
       [Conditional("DEBUG")]
-      public static void AssertEmpty(String str, String msg = null)
-      {
-         if (msg == null) DebugAssert(str != null && str.Length == 0);
-         else DebugAssert(str != null && str.Length == 0, msg);
-      }
-
-      [Conditional("DEBUG")]
-      public static void AssertNull(Object @object, String msg = null)
-      {
-         if (msg == null) DebugAssert(@object == null);
-         else DebugAssert(@object == null, msg);
-      }
-
-      [Conditional("DEBUG")]
       public static void AssertNotNull(Object @object, String msg = null)
       {
          if (msg == null) DebugAssert(@object != null);
@@ -151,23 +137,6 @@ namespace Jefferson
                System.Diagnostics.Debugger.Break();
             else
                throw new Exception("Assertion failure: " + msg);
-         }
-      }
-
-      [Conditional("DEBUG")]
-      public static void DebugAssert(Boolean assertion, String msg, params Object[] args)
-      {
-         String formattedMsg = String.Format(msg, args);
-
-         // First try an actual assertion, but they don't always show.
-         System.Diagnostics.Debug.Assert(assertion, formattedMsg);
-
-         if (!assertion)
-         {
-            if (System.Diagnostics.Debugger.IsAttached)
-               System.Diagnostics.Debugger.Break();
-            else
-               throw new Exception("Assertion failure: " + formattedMsg);
          }
       }
 
