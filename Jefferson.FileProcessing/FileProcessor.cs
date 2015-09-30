@@ -6,8 +6,6 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using System.Xml;
 
 namespace Jefferson.FileProcessing
@@ -123,6 +121,26 @@ namespace Jefferson.FileProcessing
       }
 
       /// <summary>
+      /// Processes the given hierarchy by processing all files in a childscope for its parent.
+      /// </summary>
+      /// <param name="hierarchy"></param>
+      /// <param name="deepReplacement">Replace until there are no further $$ markers.</param>
+      public void ProcessFileHierarchy(IFileHierarchy hierarchy, Boolean deepReplacement = true)
+      {
+         Contract.Requires(hierarchy != null);
+         _ProcessFileHierarchy((TSelf)this, hierarchy, deepReplacement);
+      }
+
+      private void _ProcessFileHierarchy(TSelf fileScope, IFileHierarchy hierarchy, Boolean deepReplacement)
+      {
+         foreach (var file in hierarchy.Files)
+            File.WriteAllText(file.TargetFullPath, fileScope.Replace(File.ReadAllText(file.SourceFullPath, file.Encoding), deepReplacement), file.Encoding);
+
+         foreach (var directory in hierarchy.Children)
+            _ProcessFileHierarchy(fileScope.CreateChildScope(), directory, deepReplacement);
+      }
+
+      /// <summary>
       /// Replaces variable expressions in the given source.
       /// Note about <see cref="except"/>, it only causes no exceptions to be thrown if a *name* cannot be resolved. Invalid
       /// expressions will still cause errors.
@@ -130,7 +148,7 @@ namespace Jefferson.FileProcessing
       /// <param name="source"></param>
       /// <param name="except">If true throw an exception if a variable (name) has not been defined.</param>
       /// <returns></returns>
-      public String Replace(String source)
+      public String Replace(String source, Boolean deep = true)
       {
          var jefferson = new TemplateParser();
          jefferson.ValueFilter = (name, value) =>
@@ -141,7 +159,10 @@ namespace Jefferson.FileProcessing
 
          try
          {
-            return jefferson.ReplaceDeep(source, mContext);
+            if (deep)
+               return jefferson.ReplaceDeep(source, mContext);
+            else
+               return jefferson.Replace(source, mContext);
          }
          catch (Exception e)
          {
@@ -327,5 +348,5 @@ namespace Jefferson.FileProcessing
       }
 
       #endregion
-   } 
+   }
 }

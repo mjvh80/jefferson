@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="FileProcessor.cs" />
     <None Include="Properties\AssemblyInfo.tmpl.cs" />
+    <Compile Include="IFileTree.cs" />
     <Compile Include="SimpleFileProcessor.cs" />
     <Compile Include="FileScopeContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
