@@ -164,7 +164,7 @@ Thus the let keyword is followed by a variable name and then the part of the bod
 Note that the `#define` and `#undef` directives won't function within a let directive if they match the name that has been bound.
 
 ### `$$#define$$` and `$$#undef$$`
-These directives can be used to *set* variables in the current scope. This is only supported if there is a variable binder that supports the setting and unsetting of variables.
+These directives can be used to *set* variables in the current scope. This is only supported if there is a variable binder that supports the setting and unsetting of variables. Note that the `#block` directive introduces suches a binder, in other words you can always use `#define` within a block scope.
 
 ```
 $$#define foo = 'bar'$$
