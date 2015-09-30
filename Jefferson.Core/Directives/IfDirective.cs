@@ -41,7 +41,7 @@ namespace Jefferson.Directives
             if (idx > 0) // elif
             {
                closeIdx = source.IndexOf("$$", idx);
-               if (closeIdx < 0) throw parserCtx.SyntaxError(idx, "Unmatched $$ found."); // todo: incorrect global error, must provide service in context
+               Utils.DebugAssert(closeIdx >= 0, "found unmatched $$"); // should have been caught when looking for nested directives
 
                expr = source.Substring(idx, closeIdx - idx);
                closeIdx += 2;

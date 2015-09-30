@@ -183,5 +183,25 @@ done
 ", context));
 
       }
+
+      [Fact]
+      public void Each_directive_may_not_be_empty() // todo: allow for side effects? I don't think so....
+      {
+         context.Foobars = new List<Foobar>
+         {
+            new Foobar { Bazzy = "foo1" },
+            new Foobar { Bazzy = "foo2", Nested = new[] { "NF2_0", "NF2_1" } },
+            new Foobar { Bazzy = "foo3" }
+         };
+
+         var error = Assert.Throws<SyntaxException>(() => replacer.Replace(
+@"
+Foo:
+$$#each Foobars /$$
+done
+", context));
+
+         Assert.Contains("Directive may not be empty", error.Message);
+      }
    }
 }

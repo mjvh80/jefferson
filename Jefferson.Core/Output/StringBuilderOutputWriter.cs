@@ -24,5 +24,10 @@ namespace Jefferson.Output
       {
          return _mStrBldr.ToString();
       }
+
+      public override string ToString()
+      {
+         return GetOutput();
+      }
    }
 }

@@ -119,13 +119,20 @@ $$/let$$
       }
 
       [Theory]
-      [InlineData("$$#let a= 'book'/$$"), InlineData("$$#let a = 'boo'//$$")]
-      [InlineData("$$#let$$$$/let$$")]
-      [InlineData("$$#let a='b'$$")]
-      [InlineData("$$#let 1a='b'$$$$/let$$")]
-      public void Let_bad_syntax_facts(String input)
+      [InlineData("$$#let a= 'book'/$$", "Directive may not be empty")]
+      [InlineData("$$#let a = 'boo'//$$", "Directive may not be empty")]
+      [InlineData("$$#let   $$   $$/let$$", "No variable bindings found")]
+      [InlineData("$$#let$$$$/let$$", "No variable bindings")]
+      [InlineData("$$#let$$ $$/let$$", "No variable bindings")]
+      [InlineData("$$#let $$$$/let$$", "No variable bindings")]
+      [InlineData("$$#let a='b'$$", "Failed to find directive end")]
+      [InlineData("$$#let 1a='b'$$$$/let$$", "Variable '1a' has an invalid name")]
+      [InlineData("$$#let b=1; a$$ $$/let$$", "missing '='")]
+      [InlineData("$$#let a$$ $$/let$$", "Missing $$#out$$")]
+      public void Let_bad_syntax_facts(String input, String errorPart)
       {
-         Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective()).Replace(input, new TestContext()));
+         Assert.Contains(errorPart, error.Message);
       }
 
       [Theory]

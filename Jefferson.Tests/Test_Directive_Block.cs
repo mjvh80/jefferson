@@ -1,6 +1,8 @@
 ﻿using Jefferson.Directives;
+using System;
 using System.Diagnostics;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -52,6 +54,14 @@ $$/block$$
 ", context);
 
          // Trace.WriteLine(result);
+      }
+
+      [Theory]
+      [InlineData("$$#block/$$")]
+      [InlineData("$$#block /$$")]
+      public void Block_may_not_be_empty(String src)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new BlockDirective()).Replace(src, context));
       }
 
       [Fact]

@@ -48,9 +48,11 @@ namespace Jefferson.Directives
             isArgOnly = isArgOnly || varSepIdx >= 0;
 
             var bindingLen = (varSepIdx < 0 ? arguments.Length : varSepIdx) - startIdx;
-            if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
+            if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "No variable bindings found.");
 
-            var binding = arguments.Substring(startIdx, bindingLen);
+            var binding = arguments.Substring(startIdx, bindingLen).Trim();
+            if (binding.Length == 0)
+               throw parserContext.SyntaxError(startIdx, "No variable bindings found.");
 
             var eqIdx = binding.IndexOf('=');
             if (eqIdx < 0)

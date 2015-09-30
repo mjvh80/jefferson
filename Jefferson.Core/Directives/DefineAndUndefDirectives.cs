@@ -87,8 +87,8 @@ namespace Jefferson.Directives
             case "ushort": return "System.UInt16";
             case "bool": return "System.Boolean";
             case "decimal": return "System.Decimal";
-            case "byte": return "System.UInt8";
-            case "sbyte": return "System.Int8";
+            case "byte": return "System.Byte";
+            case "sbyte": return "System.SByte";
             case "string": return "System.String";
             case "float": return "System.Single";
             case "double": return "System.Double";
@@ -102,7 +102,7 @@ namespace Jefferson.Directives
          // Compile variables.
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
 
-         var haveSource = !String.IsNullOrEmpty(source);
+         var haveSource = source != null; // empty string is empty body
 
          for (var startIdx = 0; ; )
          {
@@ -112,7 +112,8 @@ namespace Jefferson.Directives
             var bindingLen = (varSepIdx < 0 ? arguments.Length : varSepIdx) - startIdx;
             if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
 
-            var binding = arguments.Substring(startIdx, bindingLen);
+            var binding = arguments.Substring(startIdx, bindingLen).Trim();
+            if (binding.Length == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
 
             var eqIdx = binding.IndexOf('=');
 

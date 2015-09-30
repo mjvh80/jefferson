@@ -50,5 +50,18 @@ namespace Jefferson.Tests
       {
          Assert.Throws<SyntaxException>(() => replacer.Replace(input, context));
       }
+
+      [Theory]
+      [InlineData(@"
+      $$#if true$$
+      $$#elif false
+
+      $$#/endif$$
+      ", "Failed to find directive end")]
+      public void Detect_bad_if_syntaxt(String input, String errorPart)
+      {
+         var error = Assert.Throws<SyntaxException>(() => replacer.Replace(input, context));
+         Assert.Contains(errorPart, error.Message);
+      }
    }
 }

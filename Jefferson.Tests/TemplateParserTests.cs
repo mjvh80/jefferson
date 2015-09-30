@@ -373,7 +373,12 @@ $$/if$$", context));
          var parser = new TemplateParser(new DefineDirective(), new UndefDirective());
          parser.Compile<TestContext>("FieldOnCtx", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter());
          Assert.Throws<SyntaxException>(() => parser.Compile<TestContext>("$$#define FieldOnCtx = 'foobar' /$$", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter()));
-         Assert.Throws<SyntaxException>(() => parser.Compile<TestContext>("$$#undef FieldOnCtx /$$", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter())); 
+         Assert.Throws<SyntaxException>(() => parser.Compile<TestContext>("$$#undef FieldOnCtx /$$", null, new ReadOnlyBinder())(new TestContext(), new StringBuilderOutputWriter()));
+
+         // Can read though.
+         var writer = new StringBuilderOutputWriter();
+         parser.Compile<TestContext>("$$ FieldOnCtx $$", null, new ReadOnlyBinder())(new TestContext(), writer);
+         Assert.Equal("fldOnCtx", writer.ToString().Trim());
       }
 
       [Fact]

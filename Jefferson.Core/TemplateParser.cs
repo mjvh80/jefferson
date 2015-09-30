@@ -400,7 +400,7 @@ namespace Jefferson
                   var directiveEnd = isEmpty ? "/$$" : "$$/" + directiveName + "$$";
                   var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directiveEnd);
                   if (directiveEndIdx < 0) throw SyntaxError(idx, "Failed to find directive end '{0}' for directive '{1}'.", directiveEnd, directiveName);
-                  if (!isEmpty && dirBodyStartIdx >= directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
+                  if (!isEmpty && dirBodyStartIdx > directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
 
                   // Mark where to continue parsing.
                   prevIdx = directiveEndIdx + directiveEnd.Length;
@@ -497,11 +497,13 @@ namespace Jefferson
                if (len == 0) throw SyntaxError(nestedStartIdx, "Invalid empty directive found.");
 
                var nestedDirective = source.Substring(nestedStartIdx + "$$#".Length, len);
+               var nestedEmptyIdx = source.IndexOf("/$$", nestedStartIdx + "$$#".Length);
+               if (source.IndexOf("$$", nestedStartIdx + "$$#".Length) < nestedEmptyIdx) nestedEmptyIdx = -1;
                nestedDirective = "$$/" + nestedDirective + "$$";
 
-               nestedAfterEndIdx = FindDirectiveEnd(source, nextStart + 2, nestedDirective);
+               nestedAfterEndIdx = nestedEmptyIdx >= 0 ? nestedEmptyIdx : FindDirectiveEnd(source, nextStart + 2, nestedDirective);
                if (nestedAfterEndIdx >= 0)
-                  nestedAfterEndIdx += nestedDirective.Length;
+                  nestedAfterEndIdx += nestedEmptyIdx >= 0 ? "/$$".Length : nestedDirective.Length;
             }
 
             // Find the first terminator.
@@ -607,7 +609,8 @@ namespace Jefferson
 
                   // special name which moves up the context stack.
                   if (startIndex > ContextTypes.Count - 1)
-                     throw SyntaxException.Create("Invalid parent context '{0}': number of contexts in chain is {1}", typeName, ContextTypes.Count.ToStringInvariant());
+                     // TODO: positional info is wrong here we need to get it from the expression parser
+                     throw SyntaxError(0, "Invalid parent context '{0}': number of contexts in chain is {1}", typeName, ContextTypes.Count.ToStringInvariant());
                }
                else
                   // Anything else of the form a.b.c we don't resolve here.

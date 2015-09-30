@@ -116,6 +116,34 @@ namespace Jefferson.Tests
          }
       }
 
+      public class NonBinderContext
+      {
+         public String Foo = "bar";
+      }
+
+      [Fact]
+      public void Cannot_define_or_undef_without_suitable_binder()
+      {
+         var p = new TemplateParser(new DefineDirective(), new UndefDirective());
+         var def = "$$#define x = 'y'/$$ $$x$$";
+         Assert.Throws<SyntaxException>(() => p.Replace(def, new NonBinderContext()));
+         p.Replace(def, new TestContext());
+
+         def = "$$#define x = 'y'/$$ $$#undef x /$$";
+         Assert.Throws<SyntaxException>(() => p.Replace(def, new NonBinderContext()));
+         p.Replace(def, new TestContext());
+      }
+
+      [Fact]
+      public void Too_large_context_namespace_is_detected()
+      {
+         var p = new TemplateParser(new DefineDirective(), new UndefDirective());
+         var def = "$$#define x = 'y'/$$ $$ $0.x $$";
+         p.Replace(def, new TestContext());
+         var error = Assert.Throws<SyntaxException>(() => p.Replace(def + " $$ $1.x $$", new TestContext()));
+         Assert.Contains("Invalid parent context '$1'", error.Message);
+      }
+
       [Theory]
       [InlineData("$$#undef/$$"), InlineData("$$#undef /$$")]
       public void Undef_withouth_arguments_fails(String source)
@@ -218,9 +246,17 @@ namespace Jefferson.Tests
             $$/define$$
 
             $$blah('xxx', 'yyy')$$
+
+            $$#define blah(x, y,z  ) = z /$$
+            $$blah('', '', 'z')$$
+
+            $$#define blah(x,y,z,a,b) = a + b /$$
+            $$blah('', '', '', 'foo', ' bar')$$
          ", context);
 
-         Assert.Equal("Blah = xxx and yyy!", result.Trim());
+         Assert.Contains("Blah = xxx and yyy!", result.Trim());
+         Assert.Contains("z", result);
+         Assert.Contains("foo bar", result);
          Trace.WriteLine(result);
       }
 
@@ -324,7 +360,8 @@ namespace Jefferson.Tests
          Assert.Contains("barfoo", r);
       }
 
-      [Theory]
+      // todo: don't use any more, use overload with error messages
+      [Theory] // todo: like undef, add expected error msgs
       [InlineData("$$#define a()) = 'h' /$$")]
       [InlineData("$$#define a(a,) = 'foo' /$$")]
       [InlineData("$$#define a(() = 'h' /$$")]
@@ -333,6 +370,118 @@ namespace Jefferson.Tests
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(input, context));
          Trace.WriteLine(error.Message);
+      }
+
+      [Theory]
+      [InlineData("$$#define /$$", "Invalid variable binding")]
+      [InlineData("$$#define/$$", "Invalid variable binding")]
+      [InlineData("$$#define$$$$/define$$", "Invalid variable binding")]
+      [InlineData("$$#define$$  $$/define$$", "Invalid variable binding")]
+      [InlineData("$$#define 1a='$$ $$/define$$", "invalid name")]
+      [InlineData("$$#define a=1$$  $$/define$$", "directive is not empty, unexpected '='")]
+      [InlineData("$$#define a(b) = 'f'$$$$/define$$", "Unexpected #define body")]
+      [InlineData("$$#define a(blah b) = 'f' /$$", "Could not resolve parameter type")]
+      [InlineData("$$#define a;b='1'$$ $$/define$$", "Unexpected ';'")]
+      [InlineData(@"
+      $$#define foo(bar)$$
+        $$#define bar = 'bar' /$$
+      $$/define$$
+      ", "Cannot set variable 'bar' because it has been bound to a define parameter.")]
+      [InlineData(@"
+      $$#define foo(bar)$$
+        $$#undef bar /$$
+      $$/define$$
+      ", "Cannot unset variable 'bar' because it has been bound to a define parameter.")]
+      [InlineData("$$#define a( = 'foo' /$$", "Missing ')'")]
+      public void Detect_bad_define_syntax_2(String input, String expectedErrorPart)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(input, context));
+         Assert.Contains(expectedErrorPart, error.Message);
+      }
+
+      [Fact]
+      public void Various_csharp_types_work()
+      {
+         foreach (var t in new[] {"int",
+                                  "uint",
+                                  "long",
+                                  "ulong", 
+                                  "short", 
+                                  "ushort",
+                                  "bool",
+                                  "decimal",
+                                  "byte",
+                                  "sbyte", 
+                                  "string",
+                                  "float",
+                                  "double",
+                                  "object" })
+            new TemplateParser(new DefineDirective()).Replace("$$#define foo(" + t + " x) = 'bar' /$$", context);
+      }
+
+      // Not sure if this case should be disallowed...
+      [Fact]
+      public void Nested_define_can_overwrite_variable()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define foo$$
+         $$#define foo = 1 /$$
+         $$foo$$
+         $$/define$$
+         $$foo$$
+         ", context);
+
+         Assert.Equal("1", result.Trim());
+      }
+
+      [Fact]
+      public void Can_set_nested_variable_if_using_parameters()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define foo(x)$$
+            $$#define y = 'y' /$$
+            $$x + y$$
+         $$/define$$
+         $$foo('barr')$$
+         ", context);
+         Assert.Contains("barry", result);
+      }
+
+      [Fact]
+      public void Can_undef_variable_within_define_with_parameters()
+      {
+         var result = new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(@"
+         $$#define y = 'y' /$$
+         $$#define foo(x)$$
+            $$#undef y/$$
+         $$/define$$
+         $$foo('bar')$$
+         ", context);
+         Assert.Equal("", result.Trim());
+      }
+
+      [Fact]
+      public void Can_use_block_scope_within_define()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective(), new BlockDirective()).Replace(@"
+         $$#define foo$$
+         $$#block$$
+            $$#define foo = 1 /$$
+         $$/block$$
+         $$foo$$ HI
+         $$/define$$
+         $$foo$$
+         ", context));
+
+         Assert.Contains("could not resolve 'foo'", error.Message);
+      }
+
+      [Theory]
+      [InlineData("$$#undef a.b /$$", "has an invalid name")]
+      public void Detect_bad_undef_syntax(String input, String errorPart)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new UndefDirective()).Replace(input, context));
+         Assert.Contains(errorPart, error.Message);
       }
 
       [Fact]
@@ -357,6 +506,12 @@ namespace Jefferson.Tests
            ", context));
 
          Assert.Contains("Unexpected return type specification", error.Message);
+      }
+
+      [Fact]
+      public void Explicit_string_return_type_is_supported()
+      {
+         new TemplateParser(new DefineDirective()).Replace("$$#define string foo(bar) = bar /$$", context);
       }
    }
 }

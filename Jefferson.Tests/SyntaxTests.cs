@@ -54,6 +54,16 @@ namespace Jefferson.Tests
       $$/let$$
       $$/let$$
       ")]
+      [InlineData(@"
+      $$#let x = 1$$
+      $$#$$
+      $$/let$$
+      ")]
+      [InlineData(@"
+      $$#let x = 1$$
+      $$#foobar
+      $$/let$$
+      ")]
       // /if/ is a regular expression, however, this edge case is no longer allowed.
       // Note that it can easily be worked around by using $$ /if/ $$, say.
       [InlineData(@"
