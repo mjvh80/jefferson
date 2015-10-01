@@ -398,7 +398,7 @@ namespace Jefferson
                      throw SyntaxError(dirBodyStartIdx - 3, "Directive may not be empty.");
 
                   var directiveEnd = isEmpty ? "/$$" : "$$/" + directiveName + "$$";
-                  var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directiveEnd);
+                  var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directive is LiteralDirective, directiveEnd);
                   if (directiveEndIdx < 0) throw SyntaxError(idx, "Failed to find directive end '{0}' for directive '{1}'.", directiveEnd, directiveName);
                   if (!isEmpty && dirBodyStartIdx > directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
 
@@ -471,6 +471,11 @@ namespace Jefferson
          /// </summary>
          public Int32 FindDirectiveEnd(String source, Int32 start, params String[] terminators)
          {
+            return FindDirectiveEnd(source, start, false, terminators);
+         }
+
+         internal Int32 FindDirectiveEnd(String source, Int32 start, Boolean ignoreNesting, params String[] terminators)
+         {
             Ensure.NotNull(source, "source");
 
             if (terminators == null || terminators.Length == 0)
@@ -480,31 +485,32 @@ namespace Jefferson
             // If we see something like #else it is not a directive because it doesn't have a matching /else.
             var nestedStartIdx = -1;
             var nestedAfterEndIdx = -1;
-            for (var nextStart = start; nestedAfterEndIdx < 0; )
-            {
-               nestedStartIdx = source.IndexOf("$$#", nextStart);
-               if (nestedStartIdx < 0) break;
+            if (!ignoreNesting)
+               for (var nextStart = start; nestedAfterEndIdx < 0; )
+               {
+                  nestedStartIdx = source.IndexOf("$$#", nextStart);
+                  if (nestedStartIdx < 0) break;
 
-               nextStart = source.IndexOf("$$", nestedStartIdx + 3);
-               if (nextStart < 0) throw SyntaxError(nestedStartIdx, "Could not find matching $$.");
-               nextStart += 2;
+                  nextStart = source.IndexOf("$$", nestedStartIdx + 3);
+                  if (nextStart < 0) throw SyntaxError(nestedStartIdx, "Could not find matching $$.");
+                  nextStart += 2;
 
-               var dirIdx = source.IndexOf(" ", nestedStartIdx + "$$#".Length); // look for $$#<word><space>...$$
-               if (dirIdx < 0 || dirIdx > nextStart - 2) // or $$#<word>$$
-                  dirIdx = nextStart - 2;
+                  var dirIdx = source.IndexOf(" ", nestedStartIdx + "$$#".Length); // look for $$#<word><space>...$$
+                  if (dirIdx < 0 || dirIdx > nextStart - 2) // or $$#<word>$$
+                     dirIdx = nextStart - 2;
 
-               var len = dirIdx - nestedStartIdx - "$$#".Length;
-               if (len == 0) throw SyntaxError(nestedStartIdx, "Invalid empty directive found.");
+                  var len = dirIdx - nestedStartIdx - "$$#".Length;
+                  if (len == 0) throw SyntaxError(nestedStartIdx, "Invalid empty directive found.");
 
-               var nestedDirective = source.Substring(nestedStartIdx + "$$#".Length, len);
-               var nestedEmptyIdx = source.IndexOf("/$$", nestedStartIdx + "$$#".Length);
-               if (source.IndexOf("$$", nestedStartIdx + "$$#".Length) < nestedEmptyIdx) nestedEmptyIdx = -1;
-               nestedDirective = "$$/" + nestedDirective + "$$";
+                  var nestedDirective = source.Substring(nestedStartIdx + "$$#".Length, len);
+                  var nestedEmptyIdx = source.IndexOf("/$$", nestedStartIdx + "$$#".Length);
+                  if (source.IndexOf("$$", nestedStartIdx + "$$#".Length) < nestedEmptyIdx) nestedEmptyIdx = -1;
+                  nestedDirective = "$$/" + nestedDirective + "$$";
 
-               nestedAfterEndIdx = nestedEmptyIdx >= 0 ? nestedEmptyIdx : FindDirectiveEnd(source, nextStart + 2, nestedDirective);
-               if (nestedAfterEndIdx >= 0)
-                  nestedAfterEndIdx += nestedEmptyIdx >= 0 ? "/$$".Length : nestedDirective.Length;
-            }
+                  nestedAfterEndIdx = nestedEmptyIdx >= 0 ? nestedEmptyIdx : FindDirectiveEnd(source, nextStart + 2, false, nestedDirective);
+                  if (nestedAfterEndIdx >= 0)
+                     nestedAfterEndIdx += nestedEmptyIdx >= 0 ? "/$$".Length : nestedDirective.Length;
+               }
 
             // Find the first terminator.
             var endIdx = Utils.MinNonNeg(terminators.Select(t => source.IndexOf(t, start)));
@@ -520,7 +526,8 @@ namespace Jefferson
             // Restart search after nested directive.
             if (nestedAfterEndIdx < 0) return -1; // got nowehere else to go
 
-            return FindDirectiveEnd(source, nestedAfterEndIdx, terminators);
+            Utils.DebugAssert(!ignoreNesting);
+            return FindDirectiveEnd(source, nestedAfterEndIdx, false, terminators);
          }
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
