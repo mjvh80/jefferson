@@ -272,12 +272,13 @@ namespace Jefferson.FileProcessing
 
       Expression IVariableBinder.BindVariableRead(Expression currentContext, String name)
       {
-         if (KeyValueStore.IsKnownNameInScope(name))
+         Type valueType;
+         if (KeyValueStore.TryGetNameInScope(name, out valueType))
          {
             var getValueInScopeMethod = KeyValueStore.GetType().GetMethod("GetValueInScope");
             var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");
-         //   return Expression.Invoke(Expression.MakeIndex(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) }));
-            return Expression.Invoke(Expression.Call(getKeyValueStoreExpr, getValueInScopeMethod, new[] { Expression.Constant(name) }));
+            //   return Expression.Invoke(Expression.MakeIndex(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) }));
+            return Expression.Convert(Expression.Invoke(Expression.Call(getKeyValueStoreExpr, getValueInScopeMethod, new[] { Expression.Constant(name) })), valueType);
          }
 
          return AllowUnknownNames ? _sEmptyStringExpr : null;

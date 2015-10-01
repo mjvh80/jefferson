@@ -62,7 +62,7 @@ namespace Jefferson.FileProcessing
 
       public VariableScope<TKey, TValue> OpenChildScope()
       {
-         return new VariableScope<TKey, TValue>(this._mComparer)
+         return new VariableScope<TKey, TValue>(this._mComparer, _mGetType)
          {
             ParentScope = this
          };
@@ -71,6 +71,10 @@ namespace Jefferson.FileProcessing
       public Boolean IsKnownNameInScope(TKey name)
       {
          return this.KnownNames.ContainsKey(name) || (this.ParentScope != null && this.ParentScope.IsKnownNameInScope(name));
+      }
+      public Boolean TryGetNameInScope(TKey name, out Type type)
+      {
+         return this.KnownNames.TryGetValue(name, out type) || (this.ParentScope != null && this.ParentScope.TryGetNameInScope(name, out type));
       }
 
       #region Dictionary Implementation
