@@ -2,7 +2,7 @@
 
 namespace Jefferson.FileProcessing
 {
-   public class SimpleFileProcessor<TContext> : FileProcessor<SimpleFileProcessor<TContext>, TContext> where TContext : FileScopeContext<TContext, SimpleFileProcessor<TContext>>
+   public sealed class SimpleFileProcessor<TContext> : FileProcessor<SimpleFileProcessor<TContext>, TContext> where TContext : FileScopeContext<TContext, SimpleFileProcessor<TContext>>
    {
       public SimpleFileProcessor(TContext context) : base(context) { }
 

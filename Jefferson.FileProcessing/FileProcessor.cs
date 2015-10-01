@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text;
 using System.Xml;
 
 namespace Jefferson.FileProcessing
@@ -134,10 +135,34 @@ namespace Jefferson.FileProcessing
       private void _ProcessFileHierarchy(TSelf fileScope, IFileHierarchy hierarchy, Boolean deepReplacement)
       {
          foreach (var file in hierarchy.Files)
-            File.WriteAllText(file.TargetFullPath, fileScope.Replace(File.ReadAllText(file.SourceFullPath, file.Encoding), deepReplacement), file.Encoding);
+            _WriteFile(file.TargetFullPath, fileScope.Replace(_ReadFile(file.SourceFullPath, file.Encoding), deepReplacement), file.Encoding);
 
          foreach (var directory in hierarchy.Children)
             _ProcessFileHierarchy(fileScope.CreateChildScope(), directory, deepReplacement);
+      }
+
+      private static void _WriteFile(String file, String contents, Encoding encoding)
+      {
+         try
+         {
+            File.WriteAllText(file, contents, encoding);
+         }
+         catch (Exception e)
+         {
+            throw new IOException("Could not write file " + file, e);
+         }
+      }
+
+      private static String _ReadFile(String file, Encoding encoding)
+      {
+         try
+         {
+            return File.ReadAllText(file, encoding);
+         }
+         catch(Exception e)
+         {
+            throw new IOException("Could not read file " + file, e);
+         }
       }
 
       /// <summary>

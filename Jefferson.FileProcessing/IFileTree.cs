@@ -61,8 +61,8 @@ namespace Jefferson.FileProcessing
 
          return new FileHierarchy
          {
-            Files = Directory.GetFiles(directory).Select(f => Path.Combine(directory, f)).Where(fileFilter).Select(f => FileItem.FromPath(f, encoding, fileToProcessedFile)),
-            Children = Directory.GetDirectories(directory).Select(d => Path.Combine(directory, d)).Select(d => FileHierarchy.FromDirectory(d, encoding, fileFilter, fileToProcessedFile))
+            Files = Directory.GetFiles(directory).Select(f => Path.Combine(directory, f)).Where(fileFilter).Select(f => FileItem.FromPath(f, encoding, fileToProcessedFile)).ToArray(),
+            Children = Directory.GetDirectories(directory).Select(d => Path.Combine(directory, d)).Select(d => FileHierarchy.FromDirectory(d, encoding, fileFilter, fileToProcessedFile)).ToArray()
          };
       }
 

@@ -15,7 +15,7 @@ namespace Jefferson.FileProcessing
       where TSelf : FileScopeContext<TSelf, TProcessor>
       where TProcessor : FileProcessor<TProcessor, TSelf>
    {
-      public VariableScope<String, Func<Object>> KeyValueStore = new VariableScope<String, Func<Object>>(StringComparer.OrdinalIgnoreCase);
+      public VariableScope<String, Func<Object>> KeyValueStore = new VariableScope<String, Func<Object>>(StringComparer.OrdinalIgnoreCase, f => f().GetType() /* NOTE: THIS MAY BE SLOW */);
 
       public Boolean AllowUnknownNames = false;
 
@@ -268,22 +268,25 @@ namespace Jefferson.FileProcessing
 
       #region Binder Implementation
 
-      private static readonly Expression _sEmptyString = Expression.Constant("");
+      private static readonly Expression _sEmptyStringExpr = Expression.Constant("");
 
       Expression IVariableBinder.BindVariableRead(Expression currentContext, String name)
       {
-         Func<Object> getValue;
-         if (KeyValueStore.TryGetValueInScope(name, out getValue))
+         if (KeyValueStore.IsKnownNameInScope(name))
          {
-            var value = getValue();
-            return Expression.Constant(value, value.GetType());
+            var getValueInScopeMethod = KeyValueStore.GetType().GetMethod("GetValueInScope");
+            var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");
+         //   return Expression.Invoke(Expression.MakeIndex(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) }));
+            return Expression.Invoke(Expression.Call(getKeyValueStoreExpr, getValueInScopeMethod, new[] { Expression.Constant(name) }));
          }
 
-         return AllowUnknownNames ? _sEmptyString : null;
+         return AllowUnknownNames ? _sEmptyStringExpr : null;
       }
 
       public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
       {
+         KeyValueStore.KnownNames[name] = value.Type;
+
          var indexer = KeyValueStore.GetType().GetProperty("Item");
          var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");
          var indexExpr = Expression.Property(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) });
@@ -292,9 +295,9 @@ namespace Jefferson.FileProcessing
 
       public Expression UnbindVariable(Expression currentContext, String name)
       {
-         if (!KeyValueStore.ContainsKey(name)) throw new InvalidOperationException(String.Format("Cannot unset variable '{0}' as it has not been defined.", name));
-         KeyValueStore.Remove(name);
-         return Expression.Constant("");
+         if (!KeyValueStore.KnownNames.ContainsKey(name)) throw new InvalidOperationException(String.Format("Cannot unset variable '{0}' as it has not been defined.", name));
+         KeyValueStore.KnownNames.Remove(name);
+         return Expression.Constant(""); // todo better nop
       }
 
       #endregion
