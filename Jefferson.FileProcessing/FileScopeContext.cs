@@ -15,7 +15,7 @@ namespace Jefferson.FileProcessing
       where TSelf : FileScopeContext<TSelf, TProcessor>
       where TProcessor : FileProcessor<TProcessor, TSelf>
    {
-      public VariableScope<String, Func<Object>> KeyValueStore = new VariableScope<String, Func<Object>>(StringComparer.OrdinalIgnoreCase, f => f().GetType() /* NOTE: THIS MAY BE SLOW */);
+      public VariableScope<String, Object> KeyValueStore = new VariableScope<String, Object>(StringComparer.OrdinalIgnoreCase);
 
       public Boolean AllowUnknownNames = false;
 
@@ -277,8 +277,7 @@ namespace Jefferson.FileProcessing
          {
             var getValueInScopeMethod = KeyValueStore.GetType().GetMethod("GetValueInScope");
             var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");
-            //   return Expression.Invoke(Expression.MakeIndex(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) }));
-            return Expression.Convert(Expression.Invoke(Expression.Call(getKeyValueStoreExpr, getValueInScopeMethod, new[] { Expression.Constant(name) })), valueType);
+            return Expression.Convert(Expression.Call(getKeyValueStoreExpr, getValueInScopeMethod, new[] { Expression.Constant(name) }), valueType);
          }
 
          return AllowUnknownNames ? _sEmptyStringExpr : null;
@@ -286,12 +285,15 @@ namespace Jefferson.FileProcessing
 
       public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
       {
+         if (this.ReadOnlyVariables.Contains(name))
+            throw new InvalidOperationException(String.Format("Variable '{0}' cannot be set because it is marked as read-only.", name));
+
          KeyValueStore.KnownNames[name] = value.Type;
 
          var indexer = KeyValueStore.GetType().GetProperty("Item");
          var getKeyValueStoreExpr = Expression.Field(currentContext, "KeyValueStore");
          var indexExpr = Expression.Property(getKeyValueStoreExpr, indexer, new[] { Expression.Constant(name) });
-         return Expression.Assign(indexExpr, Expression.Lambda<Func<Object>>(Expression.Convert(value, typeof(Object))));
+         return Expression.Assign(indexExpr, Expression.Convert(value, typeof(Object)));
       }
 
       public Expression UnbindVariable(Expression currentContext, String name)

@@ -62,7 +62,7 @@ namespace Jefferson.FileProcessing
       /// </summary>
       public void SetCurrentFile(String fileName)
       {
-         this.Add("__FILE__", fileName, false, false, false, true);
+         this.Add("__FILE__", fileName, false, false, false);
       }
 
       public String GetCurrentFile()
@@ -107,12 +107,9 @@ namespace Jefferson.FileProcessing
       {
          if (String.IsNullOrEmpty(key)) return key;
          key = key.Trim('$');
-         Func<Object> result;
+         Object result;
          if (mContext.KeyValueStore.TryGetValueInScope(key, out result))
-         {
-            var str = result();
-            return str == null ? null : str.ToString();
-         }
+            return result == null ? null : result.ToString();
          return null;
       }
 
@@ -208,12 +205,7 @@ namespace Jefferson.FileProcessing
       /// variables. Note that this evaluation/replacement is dynamic, and is performed every time by default (unless const is true). This means that the expression may provide
       /// different values or replacement results depending on when it is run.
       /// </param>
-      /// <param name="const">
-      /// This means that the value of the expression or replacement is fixed *after first usage*. If you require a real constant value that never changes
-      /// you should instead evaluate and simply add the constant value as a string.
-      /// Note that this is only the case in the current scope. In subsequent scopes, the value can be overridden (unless marked readonly).
-      /// </param>
-      public void Add(String key, String valueExpr, Boolean isExpr = false, Boolean except = false, Boolean @readonly = false, Boolean @const = false)
+      public void Add(String key, String valueExpr, Boolean isExpr = false, Boolean except = false, Boolean @readonly = false) 
       {
          if (key == null) throw new ArgumentNullException("key");
          if (key.Contains(".")) throw Error("VarReplacer key should not contain a period (.): " + key);
@@ -226,15 +218,10 @@ namespace Jefferson.FileProcessing
          else if (haveKey)
             throw Error("Key already exists in some scope in VarReplacer and is marked as readonly: " + key);
 
-         if (@const)
-         {
-            var result = new Lazy<Object>(() => isExpr ? mTemplateParser.EvaluateExpression(valueExpr, mContext) : Replace(valueExpr));
-            mContext.KeyValueStore[key] = () => result.Value;
-         }
-         else if (isExpr)
-            mContext.KeyValueStore[key] = () => mTemplateParser.EvaluateExpression(valueExpr, mContext); // _EvaluateExpression(valueExpr, except, new List<Object> { _mContext });
+         if (isExpr)
+            mContext.KeyValueStore[key] = mTemplateParser.EvaluateExpression(valueExpr, mContext); // _EvaluateExpression(valueExpr, except, new List<Object> { _mContext });
          else
-            mContext.KeyValueStore[key] = () => Replace(valueExpr);
+            mContext.KeyValueStore[key] = Replace(valueExpr);
       }
 
       public void AddFromNodes(XmlNodeList vars, Boolean @fixed = false)
@@ -251,8 +238,6 @@ namespace Jefferson.FileProcessing
             foreach (XmlElement variable in variables.SelectNodes("*").Cast<XmlElement>().Where(var => var.HasAttribute("from") || var.HasAttribute("name")))
             {
                var markedReadOnly = XmlUtils.OptReadBool(variable, "@readonly", false, this.Error);
-               var markedConstInScope = XmlUtils.OptReadBool(variable, "@const", false, this.Error);
-               var markedFixed = XmlUtils.OptReadBool(variable, "@fixed", false, this.Error);
 
                if (variable.HasAttribute("from") && variable.HasAttribute("name"))
                   throw this.Error(variable, null, "variable definition should use either @from or @name, not both");
@@ -286,14 +271,7 @@ namespace Jefferson.FileProcessing
                }
 
                var key = XmlUtils.ReadStr(variable, "@from | @name", this.Error);
-               if (@fixed || markedFixed)
-               {
-                  Add(key, txt, isExpr, exceptOnError, @readonly: true, @const: true);
-                  // Little hack, but evaluate the expression to force it to remain const.
-                  GetReplacement(key);
-               }
-               else
-                  Add(key, txt, isExpr, exceptOnError, @readonly: markedReadOnly, @const: markedConstInScope);
+               Add(key, txt, isExpr, exceptOnError, @readonly: markedReadOnly);
             }
          }
       }
@@ -326,9 +304,9 @@ namespace Jefferson.FileProcessing
 
       public Object GetObject(String key)
       {
-         Func<Object> result;
+         Object result;
          if (mContext.KeyValueStore.TryGetValueInScope(key, out result))
-            return result();
+            return result;
          return null;
       }
 

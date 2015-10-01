@@ -9,14 +9,12 @@ namespace Jefferson.FileProcessing
       private readonly IEqualityComparer<TKey> _mComparer;
       private readonly Dictionary<TKey, TValue> _mDict;
       internal readonly Dictionary<TKey, Type> KnownNames;
-      private readonly Func<TValue, Type> _mGetType;
 
-      public VariableScope(IEqualityComparer<TKey> comparer, Func<TValue, Type> getType = null)
+      public VariableScope(IEqualityComparer<TKey> comparer)
       {
          _mComparer = comparer;
          KnownNames = new Dictionary<TKey, Type>(comparer);
          _mDict = new Dictionary<TKey, TValue>(comparer);
-         _mGetType = getType ?? (v => v.GetType());
       }
 
       public VariableScope<TKey, TValue> ParentScope { get; private set; }
@@ -62,7 +60,7 @@ namespace Jefferson.FileProcessing
 
       public VariableScope<TKey, TValue> OpenChildScope()
       {
-         return new VariableScope<TKey, TValue>(this._mComparer, _mGetType)
+         return new VariableScope<TKey, TValue>(this._mComparer)
          {
             ParentScope = this
          };
@@ -84,7 +82,7 @@ namespace Jefferson.FileProcessing
       public void Add(TKey key, TValue value)
       {
          _mDict.Add(key, value);
-         KnownNames.Add(key, _mGetType(value));
+         KnownNames.Add(key, value.GetType()); // todo null?
       }
 
       public Boolean ContainsKey(TKey key)
@@ -122,14 +120,14 @@ namespace Jefferson.FileProcessing
          set
          {
             _mDict[key] = value;
-            KnownNames[key] = _mGetType(value);
+            KnownNames[key] = value.GetType(); // todo null
          }
       }
 
       public void Add(KeyValuePair<TKey, TValue> item)
       {
          _mDict.Add(item.Key, item.Value);
-         KnownNames.Add(item.Key, _mGetType(item.Value));
+         KnownNames.Add(item.Key, item.Value.GetType()); // todo null
       }
 
       public void Clear()
