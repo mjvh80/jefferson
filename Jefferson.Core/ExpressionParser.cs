@@ -29,6 +29,7 @@ using BinOp = System.Func<System.Linq.Expressions.Expression, System.Linq.Expres
 
 namespace Jefferson
 {
+   using System.Collections.Concurrent;
    using BinConversion = Func<BinOp, BinOp>;
    using BinOpMap = Tuple<String[], BinOp>;
    using Production = Func<Expression>;
@@ -117,6 +118,11 @@ namespace Jefferson
 
    public class ExpressionParser<TContext, TOutput>
    {
+      // Yes this hangs on to some stuff, but should not be too bad. If so, could make optional.
+      private static readonly ConcurrentDictionary<String, Regex> _sRegexCache = new ConcurrentDictionary<String, Regex>();
+
+      static ExpressionParser() { }
+
       // For debugger purposes only.
       private String _ContextTypeString { get { return typeof(TContext).Name; } }
       private String _OutputTypeString { get { return typeof(TOutput).Name; } }
@@ -351,7 +357,7 @@ namespace Jefferson
 
          Func<String, Boolean> advanceIfMatch = (s) =>
          {
-            var r = new Regex("\\G(" + s + ")", RegexOptions.CultureInvariant);
+            var r = _sRegexCache.GetOrAdd("\\G(" + s + ")", _s => new Regex(_s, RegexOptions.CultureInvariant));
             var m = r.Match(expr, startat: i);
             if (!m.Success) return false;
             i += m.Length;
@@ -815,7 +821,7 @@ namespace Jefferson
                GetString: token += advanceWhile(() => expr[i] != startChar && expr[i] != '`'); // our string escape character is ` like PowerShell
                   if (i < expr.Length && expr[i] == '`')
                   {
-                     if (i >= expr.Length - 1) throwExpected("valid string escape sequence");
+                     if (i >= expr.Length - 1) throwExpected("valid String escape sequence");
                      switch (expr[i + 1])
                      {
                         case 'n': token += '\n'; break;
@@ -934,7 +940,7 @@ namespace Jefferson
                      }
 
                   if (isHex && isDouble)
-                     throwExpected("either hex or double number, got '{0}'", token);
+                     throwExpected("either hex or Double number, got '{0}'", token);
 
                   var parseMethod = numType.GetMethods().Where(m => m.Name == "TryParse" && m.GetParameters().Length == 4).Single(); // todo?
                   var numFlags = isDouble ? NumberStyles.Float : (isHex ? NumberStyles.HexNumber : NumberStyles.Integer);

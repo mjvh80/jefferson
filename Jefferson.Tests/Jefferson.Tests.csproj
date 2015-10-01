@@ -81,4 +81,11 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+   <UsingTask
+    AssemblyFile="$(ProjectDir)..\packages\xunit.runners.1.9.2\tools\xunit.runner.msbuild.dll"
+    TaskName="Xunit.Runner.MSBuild.xunit"/>
+
+  <Target Name="Test">
+    <xunit Assemblies="$(TargetPath)" />
+  </Target>
 </Project>
