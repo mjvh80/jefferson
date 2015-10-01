@@ -196,6 +196,10 @@ Note: when no type is specified, `string` is assumed. When the `#define` directi
 
 This differs from the `#let` directive in that `#let` only binds a name within the statement, without affecting the context in any way. `#define` causes global changes visible accross files. Note that the `Jefferson.FileProcessing` adds support for file-level scopes. This can be used to read in a tree of files in which for every file the variables of its ancestors are accessible but it cannot alter these.
 
+### `$$#literal$$`
+The `#literal` directive can be used to output any containing source *as-is*. It's similar to xml CDATA. This directive cannot be nested, i.e. the body of the literal directive must not contain `$$/literal$$`.
+Note that if this is used with the `ReplaceDeep` method, the body of the directive will be evaluated in a subsequent pass.
+
 ## Case Sensitivity and Cultures
 
 By default Jefferson is case insensitive in how variables resolve and things like string comparison. This can be made case sensitive using a `TemplateOptions` instance passed to the constructor of the parser, however, no more granular control (e.g. case insensitive resolution but case sensitive string matching) is currently possible.
