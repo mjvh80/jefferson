@@ -1,12 +1,10 @@
 ﻿using Jefferson.FileProcessing;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Xunit;
 
 namespace Jefferson.Tests
 {
-
    public class HierarchicalFileProcessingTests
    {
       public class TestContext : FileScopeContext<TestContext, SimpleFileProcessor<TestContext>> { }
@@ -70,6 +68,21 @@ namespace Jefferson.Tests
          var gcContent = File.ReadAllText(h.Children.First().Children.First().Files.First().TargetFullPath);
          Assert.Contains("foo from b", gcContent); // inherited from b which was last to execute in parent scope
          Assert.Contains("foo from grand child", gcContent);
+      }
+
+      [Fact]
+      public void Cannot_create_file_item_from_non_existing_file()
+      {
+         var nonExistingFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Assert.False(File.Exists(nonExistingFile));
+         Assert.Throws<FileNotFoundException>(() => FileItem.FromFile(nonExistingFile));
+      }
+
+      public void Cannot_create_hierarchy_from_non_existing_directory()
+      {
+         var nonExistingFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Assert.False(Directory.Exists(nonExistingFile));
+         Assert.Throws<DirectoryNotFoundException>(() => FileHierarchy.FromDirectory(nonExistingFile));
       }
    }
 }

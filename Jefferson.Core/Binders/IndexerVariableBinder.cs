@@ -7,6 +7,8 @@ namespace Jefferson.Binders
 {
    /// <summary>
    /// Binds variables by looking up an indexer in the current context.
+   /// If inheriting, make sure to ensure that variables added to any dictionaries (say)
+   /// are declared in the type declarations so that it is known at compile time a variable exists.
    /// </summary>
    public class IndexerVariableBinder : IVariableBinder
    {

@@ -31,7 +31,7 @@ namespace Jefferson.FileProcessing
          return System.IO.Path.GetTempFileName();
       }
 
-      public static FileItem FromPath(String path, Encoding encoding = null, Func<String, String> fileToProcessedFile = null)
+      public static FileItem FromFile(String path, Encoding encoding = null, Func<String, String> fileToProcessedFile = null)
       {
          if (!System.IO.File.Exists(path))
             throw new System.IO.FileNotFoundException("Could not find file " + path);
@@ -61,7 +61,7 @@ namespace Jefferson.FileProcessing
 
          return new FileHierarchy
          {
-            Files = Directory.GetFiles(directory).Select(f => Path.Combine(directory, f)).Where(fileFilter).Select(f => FileItem.FromPath(f, encoding, fileToProcessedFile)).ToArray(),
+            Files = Directory.GetFiles(directory).Select(f => Path.Combine(directory, f)).Where(fileFilter).Select(f => FileItem.FromFile(f, encoding, fileToProcessedFile)).ToArray(),
             Children = Directory.GetDirectories(directory).Select(d => Path.Combine(directory, d)).Select(d => FileHierarchy.FromDirectory(d, encoding, fileFilter, fileToProcessedFile)).ToArray()
          };
       }
