@@ -28,10 +28,12 @@ namespace Jefferson.Tests
       [Fact]
       public void Utils_debug_asserts_work()
       {
+#if DEBUG
          Assert.Throws<TraceAssertException>(() => Utils.DebugAssert(false));
          Assert.Throws<TraceAssertException>(() => Utils.DebugAssert(false, "foo"));
          Assert.Throws<TraceAssertException>(() => Utils.AssertNotNull(null, null));
          Assert.Throws<TraceAssertException>(() => Utils.AssertNotNull(null, "oue"));
+#endif
          Utils.DebugAssert(true);
          Utils.DebugAssert(true, "aoue");
          Utils.AssertNotNull("oue");
