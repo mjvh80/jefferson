@@ -255,7 +255,21 @@ namespace Jefferson.Tests
          Assert.Equal("null", run("Obj(null)"));
          Assert.Equal("foo", run("Obj('foo')"));
          Assert.Equal("1", run("Obj(1)"));
+
+         Assert.Equal("bar", run("foo(1)")); // can ignore case
          // todo: more and more tests here
+      }
+
+      [Fact]
+      public void Can_ignore_method_case()
+      {
+         var p = new ExpressionParser<TypeCoercions, String>();
+         var c = new TypeCoercions();
+
+         Assert.Throws<SyntaxException>(() => p.ParseExpression("foo(1)")(c)); // can ignore case
+
+         var result = p.ParseExpression("foo(1)", null, ExpressionParsingFlags.IgnoreCase)(c);
+         Assert.Equal("1", result);
       }
 
       [Fact]

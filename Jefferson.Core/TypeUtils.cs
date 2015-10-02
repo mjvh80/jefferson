@@ -91,6 +91,7 @@ namespace Jefferson
          var argTypes = @params.Select(p => p.Type);
 
          var bindingFlags = BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;
+         if (ignoreCase) bindingFlags |= BindingFlags.IgnoreCase;
 
          // Optimization: First see if we can find *any* method of the given name, avoids heavier work.
          try

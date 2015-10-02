@@ -33,6 +33,7 @@ namespace Jefferson
    using Production = Func<Expression>;
 
    // Temporary expression representing an unresolved identifier.
+   [DebuggerDisplay("{Identifier}")]
    internal class _IdentifierExpression : Expression
    {
       public String Identifier;
@@ -304,8 +305,10 @@ namespace Jefferson
          Func<String> nameToken = null;
          Func<Expression> expression = null, equalExpr = null, relExpr = null, multExpr = null, addExpr = null, unitExpr = null, unaryExpr = null, primaryExpr = null, condExpr = null, nullExpr = null, orExpr = null, andExpr = null, binAndExpr = null, binOrExpr = null, binExOrExpr = null, ifExpr = null;
 
+         // Index in source over which we'll close.
          Int32 i = 0;
 
+         var ignoreCase = flags.HasFlag(ExpressionParsingFlags.IgnoreCase);
 
          var defaultResolver = _GetDefaultNameResolver(flags);
          if (nameResolver == null)  // Default: get a property or field by the given name.
@@ -404,8 +407,6 @@ namespace Jefferson
             if (e1.Type.IsEnum && e2.Type.IsEnum) return f(e1, e2);
             if (!e1.Type.IsEnum && !e2.Type.IsEnum) return f(e1, e2);
 
-            var ignoreCase = flags.HasFlag(ExpressionParsingFlags.IgnoreCase);
-
             if (e1.Type.IsEnum)
                e2 = TypeUtils.GetConverter(e2.Type, e1.Type, ignoreCase)(e2);
             else
@@ -493,9 +494,9 @@ namespace Jefferson
 
                StringComparison strComparison;
                if (flags.HasFlag(ExpressionParsingFlags.UseCurrentCulture))
-                  strComparison = flags.HasFlag(ExpressionParsingFlags.IgnoreCase) ? StringComparison.CurrentCultureIgnoreCase : StringComparison.CurrentCulture;
+                  strComparison = ignoreCase ? StringComparison.CurrentCultureIgnoreCase : StringComparison.CurrentCulture;
                else
-                  strComparison = flags.HasFlag(ExpressionParsingFlags.IgnoreCase) ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture;
+                  strComparison = ignoreCase ? StringComparison.InvariantCultureIgnoreCase : StringComparison.InvariantCulture;
 
                return Expression.Condition(Expression.Equal(left, _nullStr), Expression.Equal(right, _nullStr), Expression.Call(left, equalsMethod, right, Expression.Constant(strComparison)));
             }
@@ -687,9 +688,9 @@ namespace Jefferson
                      if (!isResolved)
                      {
                         var ambiguousMethod = false;
-                        var method = TypeUtils.ResolveMethod(identifier, methodTarget, methodTargetType, true, out ambiguousMethod, parameters.ToArray());
+                        var method = TypeUtils.ResolveMethod(identifier, methodTarget, methodTargetType, ignoreCase, out ambiguousMethod, parameters.ToArray());
                         if (ambiguousMethod)
-                           throw SyntaxException.Create(expr, i, "Ambiguous method call: multiple candidates found that could match argument types.");
+                           throw SyntaxException.Create(expr, i, "Ambiguous method call: multiple methods '{0}' found that could match argument types.", identifier);
                         if (method != null)
                         {
                            result = method;
@@ -703,7 +704,7 @@ namespace Jefferson
                         result = defaultResolver(methodTarget, identifier, null, defaultResolver);
 
                      if (result == null)
-                        throwExpected("name resolving to a delegate ('{0}' did not resolve or value is not a delegate) - note that method arguments must be of the correct type and are *not* coerced currently", identifier);
+                        throwExpected("name resolving to a delegate ('{0}' did not resolve or value is not a delegate)", identifier);
                   }
 
                   // Either we previously resolved a delegate, or we just determined the identifier was not a method.
@@ -712,7 +713,7 @@ namespace Jefferson
                      result = TypeUtils.ResolveMethod("Invoke", result, result.Type, parameters.ToArray());
                      if (result == null)
                      {
-                        var invoke = result.Type.GetMethod("Invoke");
+                        var invoke = result.Type.GetMethod("Invoke"); // note that it exists
                         throwExpected("correct delegate invocation, found delegate requiring {0} parameters of types {1}", invoke.GetParameters().Length, String.Join(",", invoke.GetParameters().Select(p => p.ParameterType.Name)));
                      }
                   }
@@ -784,7 +785,7 @@ namespace Jefferson
                   expectAdvance("/");
 
                   var options = flags.HasFlag(ExpressionParsingFlags.UseCurrentCulture) ? RegexOptions.None : RegexOptions.CultureInvariant;
-                  if (flags.HasFlag(ExpressionParsingFlags.IgnoreCase)) options |= RegexOptions.IgnoreCase;
+                  if (ignoreCase) options |= RegexOptions.IgnoreCase;
 
                   // Read modifiers.
                   for (; i < expr.Length; i += 1)
