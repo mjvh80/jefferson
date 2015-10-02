@@ -63,6 +63,8 @@ namespace Jefferson.Tests
 
       public IEnumerable<Foobar> Foobars;
 
+      public String HelloWorld(String world) { return "Hello " + world; }
+
       public String[] EmptyStrAr = new String[0];
 
       // Declare the variable.

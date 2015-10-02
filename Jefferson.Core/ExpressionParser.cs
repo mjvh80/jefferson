@@ -13,7 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-using Jefferson.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -22,7 +21,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using BinOp = System.Func<System.Linq.Expressions.Expression, System.Linq.Expressions.Expression, System.Linq.Expressions.Expression>;
@@ -389,12 +387,6 @@ namespace Jefferson
             return result;
          };
 
-         Func<Expression, Expression> enumToNum = e =>
-         {
-            if (!e.Type.IsEnum) return e;
-            return Expression.Convert(e, Enum.GetUnderlyingType(e.Type));
-         };
-
          #endregion
 
          var _false = Expression.Constant(false);
@@ -403,102 +395,26 @@ namespace Jefferson
          var _nullStr = Expression.Constant(null, typeof(String));
          var _null = Expression.Constant(null);
 
-         #region Conversions
+         var convertToBool = TypeUtils.Convert_ToBool;
+         var convertIfBools = TypeUtils.ConvertIfOneBoolean;
+         var widenNums = TypeUtils.WidenNumbers;
 
-         // Converts the given expression to a bool value, using:
-         // - non zero values are true
-         // - non empty strings are true
-         Func<Expression, Expression> convertToBool = e =>
+         BinConversion convertIfEnums = f => (e1, e2) =>
          {
-            if (e._is_<Boolean>()) return e;
-            if (e.IsNullConstant()) return _false; // shortcut
-
-            if (e.Type.IsValueType)
-               return Expression.Not(e.CallInline("IsZero"));
-
-            // Strings.
-            if (e._is_<String>()) return _GetExpr<String, Boolean>(e, s => s != null && s.Length != 0, inline: false);
-
-            // Any reference type, false if null, true otherwise. Could consider collections, not sure. In js !![] === true.
-            return e.IfTypeIs<Boolean>(e.DynCast<Boolean>(), Expression.Not(Expression.Equal(e, _null)));
-         };
-         // "foo" == true
-         BinConversion widenIfOneBool = f => (e1, e2) =>
-         {
-            if (e1._is_<Boolean>() || e2._is_<Boolean>())
-               return f(convertToBool(e1), convertToBool(e2));
-            if (e1.Type.IsValueType && e2.Type.IsValueType)
-               return f(e1, e2);
-            // At runtime, see if we have boxed bools.
-            return e1.IfTypeIs<Boolean>(f(e1.DynCast<Boolean>(), convertToBool(e2)),
-                     e2.IfTypeIs<Boolean>(f(convertToBool(e1), e2.DynCast<Boolean>()),
-                        f(e1, e2)));
-         };
-
-         BinConversion convEnums = f => (e1, e2) =>
-         {
-            if (e1.Type.IsEnum && e2.Type.IsEnum) return f(e1, e2);   // todo < what if different types
+            if (e1.Type.IsEnum && e2.Type.IsEnum) return f(e1, e2);
             if (!e1.Type.IsEnum && !e2.Type.IsEnum) return f(e1, e2);
 
             var ignoreCase = flags.HasFlag(ExpressionParsingFlags.IgnoreCase);
 
-            if (e1.Type == typeof(String))
-            {
-               e1 = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(e2.Type), e1, Expression.Constant(ignoreCase));
-               e1 = Expression.Convert(e1, e2.Type);
-            }
-            else if (e2.Type == typeof(String))
-            {
-               e2 = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(e1.Type), e2, Expression.Constant(ignoreCase));
-               e2 = Expression.Convert(e2, e1.Type);
-            }
-
-            // todo: integral conversions
+            if (e1.Type.IsEnum)
+               e2 = TypeUtils.GetConverter(e2.Type, e1.Type, ignoreCase)(e2);
+            else
+               e1 = TypeUtils.GetConverter(e1.Type, e2.Type, ignoreCase)(e1);
 
             return f(e1, e2);
          };
 
-         BinConversion widenNums = f => (e1, e2) =>
-         {
-            if (e1.Type.IsEnum) e1 = enumToNum(e1);
-            if (e2.Type.IsEnum) e2 = enumToNum(e2);
-
-            if (e1.Type == e2.Type) return f(e1, e2);
-
-            // One is not a value type thus not a number. Note we won't attempt to cast etc.
-            if (!e1.IsNumeric() || !e2.IsNumeric()) return f(e1, e2);
-
-            if (e1.IsIntegral() && e2.IsIntegral())
-            {
-               var d = Marshal.SizeOf(e1.Type) - Marshal.SizeOf(e2.Type);
-               if (d < 0) // e2 > e1
-                  return f(Expression.Convert(e1, e2.Type), e2);
-               else if (d > 0) // e1 > e2
-                  return f(e1, Expression.Convert(e2, e1.Type));
-
-               // Types are of the same size, but one is signed and the other isn't.
-               switch (Marshal.SizeOf(e1.Type))
-               {
-                  // As C# does, lift to int.
-                  case 1:
-                  case 2:
-                     return f(Expression.Convert(e1, typeof(Int32)), Expression.Convert(e2, typeof(Int32)));
-                  case 4:
-                  case 8: // case not supported by C#, but we'll simply convert to signed
-                     return f(Expression.Convert(e1, typeof(Int64)), Expression.Convert(e2, typeof(Int64)));
-
-                  default: throw new InvalidOperationException();
-               }
-            }
-            // Convert integral types to floats or doubles, some loss of precision is allowed.
-            else if (!e1.IsIntegral())
-               return f(e1, Expression.Convert(e2, e1.Type));
-            else // e2 is not integral but e1 is
-               return f(Expression.Convert(e1, e2.Type), e2);
-         };
-
-         #endregion
-
+         // Start Syntax Definition.
          expression = () => ifExpr();
 
          ifExpr = () =>
@@ -568,7 +484,7 @@ namespace Jefferson
             if (left.Type == typeof(String) || right.Type == typeof(String)) // note: one may represent null, which has Type not String
             {
                if (left.Type.IsEnum || right.Type.IsEnum)
-                  return convEnums(equals)(left, right);
+                  return convertIfEnums(equals)(left, right);
 
                left = toString(left);
                right = toString(right);
@@ -591,7 +507,7 @@ namespace Jefferson
                   l = Expression.Convert(l, typeof(Object)); r = Expression.Convert(r, typeof(Object)); // box both
                   return Expression.Condition(Expression.Equal(l, _null), Expression.Equal(r, _null), Expression.Equal(l, r));
                };
-               return widenIfOneBool(widenNums(eq))(left, right); // default equals
+               return convertIfBools(widenNums(eq))(left, right); // default equals
             }
          };
 
@@ -755,40 +671,53 @@ namespace Jefferson
                   // Resolve method call. For now non-static calls only.
                   if (identifier.Length > 0)// identifier must have been set above
                   {
-                     // NOTE: we are looking for exact types here, so no type coercion here.
-                     // This is much harder than it looks because of things like overload resolution, so won't support for now (if ever).
+                     // Note: we don't resolve overloads. If there's more than one method to fit, for now, we'll just throw an error.
                      var methodTarget = result is _IdentifierExpression ? actualContextExpr : result;
-                     var method = (result is _IdentifierExpression ? actualContextType : result.Type)
-                                 .GetMethod(identifier, BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod, null, (from e in parameters select e.Type).ToArray(), null);
-                     if (method != null)
+                     var methodTargetType = result is _IdentifierExpression ? actualContextType : result.Type;
+
+                     // First see if caller has overridden resolution.
+                     Boolean isResolved = false;
+                     if (result is _IdentifierExpression)
                      {
-                        result = Expression.Call(method.IsStatic ? null : methodTarget, method, parameters);
-                        identifier = "";
-                        continue;
+                        result = nameResolver(methodTarget, identifier, null, defaultResolver);
+                        isResolved = result != null;
+                     }
+
+                     // Otherwise, methods go before fields.
+                     if (!isResolved)
+                     {
+                        var ambiguousMethod = false;
+                        var method = TypeUtils.ResolveMethod(identifier, methodTarget, methodTargetType, true, out ambiguousMethod, parameters.ToArray());
+                        if (ambiguousMethod)
+                           throw SyntaxException.Create(expr, i, "Ambiguous method call: multiple candidates found that could match argument types.");
+                        if (method != null)
+                        {
+                           result = method;
+                           identifier = "";
+                           continue;
+                        }
                      }
 
                      // Now we know the name is not a method, we can resolve it to a delegate.
-                     if (result is _IdentifierExpression)
-                        result = nameResolver(methodTarget, identifier, null, defaultResolver);
-                     else
+                     if (!isResolved)
                         result = defaultResolver(methodTarget, identifier, null, defaultResolver);
 
-                     if (result == null) throwExpected("name resolving to a delegate ('{0}' did not resolve or value is not a delegate) - note that method arguments must be of the correct type and are *not* coerced currently", identifier);
+                     if (result == null)
+                        throwExpected("name resolving to a delegate ('{0}' did not resolve or value is not a delegate) - note that method arguments must be of the correct type and are *not* coerced currently", identifier);
                   }
 
                   // Either we previously resolved a delegate, or we just determined the identifier was not a method.
                   if (typeof(Delegate).IsAssignableFrom(result.Type)) // it's a delegate that was already resolved, call that
                   {
-                     var method = result.Type.GetMethod("Invoke", BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod, null, (from e in parameters select e.Type).ToArray(), null);
-                     if (method == null)
+                     result = TypeUtils.ResolveMethod("Invoke", result, result.Type, parameters.ToArray());
+                     if (result == null)
                      {
                         var invoke = result.Type.GetMethod("Invoke");
                         throwExpected("correct delegate invocation, found delegate requiring {0} parameters of types {1}", invoke.GetParameters().Length, String.Join(",", invoke.GetParameters().Select(p => p.ParameterType.Name)));
                      }
-                     result = Expression.Call(result, method, parameters);
                   }
                   else if (identifier.Length == 0) throwExpected("expression to resolve to a delegate value, got value of type '{0}'", result.Type.FullName);
-                  else throwExpected("'{0}' to resolve to a delegate or method", identifier);
+                  else throwExpected("'{0}' to resolve to a delegate or method, instead got {1}", identifier, result == null ? "nothing" : "value of type " + result.Type.FullName);
 
                   identifier = "";
                }

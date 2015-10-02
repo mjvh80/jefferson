@@ -214,15 +214,60 @@ namespace Jefferson.Tests
       {
          var p = new ExpressionParser<Context, String>();
 
-         var c = p.ParseExpression("IncludeFile(JoinPath(APPROOT.ToString(), 'site\\packages.config'))", (@this, n, tn, def) =>
+         var error = Assert.Throws<SyntaxException>(() => p.ParseExpression("IncludeFile(JoinPath(APPROOT.ToString(), 'site\\packages.config'))", (@this, n, tn, def) =>
          {
             // Test: always return something not-null (as-if resolved dynamically at run-time).
             if (tn != null) return def(@this, n, tn, null);
             return Expression.Constant("Foobar");
-         });
+         })(new Context()));
 
          // As our resolver takes precendence.
-         Assert.Equal(@"Foobar\site\packages.config", c(new Context()));
+         //   Assert.Equal(@"Foobar\site\packages.config", c(new Context()));
+
+         // Behaviour here changed. If we *override* resolution for a name, that always takes precendence.
+         // Our "binder" is the default rather than the norm.
+         Assert.Contains("Expected 'JoinPath' to resolve to a delegate or method", error.Message);
+      }
+
+      public class TypeCoercions
+      {
+         public String Foo(String x) { return x; }
+
+         public Int16 Short(Int16 s) { return s; }
+
+         public String Foobar(Int32 x) { return x.ToString(); }
+         public String Foobar(String x) { return x; }
+
+         public String Obj(Object o) {  return o == null ? "null" : o.ToString(); }
+      }
+
+      [Fact]
+      public void Various_type_coercion_tests()
+      {
+         var p = new ExpressionParser<TypeCoercions, String>();
+         var c = new TypeCoercions();
+         Func<String, String> run = s => p.ParseExpression(s)(c);
+
+         Assert.Equal("1", run("Foo(1)"));
+         Assert.Equal("1.2", run("Foo(1.2)"));
+         Assert.Equal("test", run("Foo(/test/)"));
+         Assert.Equal("12", run("Short(12)"));
+         Assert.Equal("null", run("Obj(null)"));
+         Assert.Equal("foo", run("Obj('foo')"));
+         Assert.Equal("1", run("Obj(1)"));
+         // todo: more and more tests here
+      }
+
+      [Fact]
+      public void Cannot_handle_overloading()
+      {
+         var p = new ExpressionParser<TypeCoercions, String>();
+         var c = new TypeCoercions();
+         Func<String, String> run = s => p.ParseExpression(s)(c);
+
+         // todo: should we attempt to solve these situations?
+         var error = Assert.Throws<SyntaxException>(() => run("Foobar(1)"));
+         Assert.Contains("Ambiguous method call", error.Message);
       }
 
       [Fact]
@@ -247,8 +292,12 @@ namespace Jefferson.Tests
       }
 
       [Theory]
-      [InlineData(@"1//")][InlineData("1   //")][InlineData("1  //   ")]
-      [InlineData(@" 1//")][InlineData(" 1   //")][InlineData(" 1  //   ")]
+      [InlineData(@"1//")]
+      [InlineData("1   //")]
+      [InlineData("1  //   ")]
+      [InlineData(@" 1//")]
+      [InlineData(" 1   //")]
+      [InlineData(" 1  //   ")]
       [InlineData(@"1 + // foobar
                     2// blah ")]
       public void Can_skip_comments_in_expressions(String source)

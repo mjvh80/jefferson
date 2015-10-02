@@ -18,6 +18,11 @@ namespace Jefferson.Extensions
          return Expression.Convert(Expression.Convert(e, typeof(Object)), typeof(TType));
       }
 
+      public static Expression Convert<TType>(this Expression e)
+      {
+         return Expression.Convert(e, typeof(TType));
+      }
+
       //public static Expression OptCast<TType>(this Expression e)
       //{
       //   return e.IfTypeIs<TType>(e.DynCast<TType>(), e);
@@ -30,14 +35,12 @@ namespace Jefferson.Extensions
 
       public static Boolean IsNumeric(this Expression e)
       {
-         return e._is_<Char>() || e._is_<SByte>() || e._is_<Byte>() || e._is_<Int16>() || e._is_<UInt16>() ||
-                e._is_<Int32>() || e._is_<UInt32>() || e._is_<Int64>() || e._is_<UInt64>() || e._is_<Double>() ||
-                e._is_<Single>(); // || e._is_<Decimal>();
+         return e.Type.IsNumeric();
       }
 
       public static Boolean IsIntegral(this Expression e)
       {
-         return e.IsNumeric() && !(e._is_<Single>() || e._is_<Double>()); // || e._is_<Decimal>());
+         return e.Type.IsIntegral(); 
       }
 
       public static Boolean IsNullConstant(this Expression e)
@@ -47,6 +50,23 @@ namespace Jefferson.Extensions
       }
 
       #endregion
+
+      public static Boolean _is_<TType>(this Type e)
+      {
+         return e.IsAssignableFrom(typeof(TType));
+      }
+
+      public static Boolean IsIntegral(this Type e)
+      {
+         return e.IsNumeric() && !(e._is_<Single>() || e._is_<Double>()); // || e._is_<Decimal>());
+      }
+
+      public static Boolean IsNumeric(this Type e)
+      {
+         return e._is_<Char>() || e._is_<SByte>() || e._is_<Byte>() || e._is_<Int16>() || e._is_<UInt16>() ||
+                e._is_<Int32>() || e._is_<UInt32>() || e._is_<Int64>() || e._is_<UInt64>() || e._is_<Double>() ||
+                e._is_<Single>(); // || e._is_<Decimal>();
+      }
 
       #region ToStringInvariant
 

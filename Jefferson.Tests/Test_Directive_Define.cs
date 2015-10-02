@@ -261,6 +261,32 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Can_override_context_fields_and_properties()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$FieldOnCtx$$
+         $$#define FieldOnCtx = 'hi there' /$$
+         $$FieldOnCtx$$
+         ", context);
+
+         Assert.Contains("fldOnCtx", result);
+         Assert.Contains("hi there", result);
+      }
+
+      [Fact]
+      public void Can_override_method_on_context()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$HelloWorld('world')$$
+         $$#define HelloWorld(w) = 'foobar' /$$
+         $$HelloWorld('world')$$
+         ", context);
+
+         Assert.Contains("Hello world", result);
+         Assert.Contains("foobar", result);
+      }
+
+      [Fact]
       public void Can_access_let_binding_within_define()
       {
          var result = new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
