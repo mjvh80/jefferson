@@ -66,5 +66,38 @@ namespace Jefferson.Tests
          var error = Assert.Throws<SyntaxException>(() => parser.Replace(source, new TestContext()));
          Assert.Contains(errorPart, error.Message);
       }
+
+      [Fact]
+      public void Comments_are_ignored()
+      {
+         var parser = new TemplateParser(new CommentDirective());
+
+         var result = parser.Replace(@"
+
+         foo
+
+         $$#comment$$
+             $$#$$
+             $$ no processing $$
+
+             $$#bad
+
+             $$#$$
+
+             $$#if  /$$
+             $$/if$$
+
+             bar
+         $$/comment$$
+
+         $$#comment I am also a comment /$$
+
+         qux
+         ", new TestContext());
+
+         Assert.DoesNotContain("$$#", result);
+         Assert.Contains("foo", result);
+         Assert.DoesNotContain("also a", result);
+      }
    }
 }

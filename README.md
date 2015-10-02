@@ -76,6 +76,7 @@ Some of the following is supported (list not exhaustive):
 * regex support `=~` and `!~` and `/regex/`
 * method calls (no fancy overload resolution, however, at the moment)
 * indexers (currently restricted to single argument indexers)
+* `// ...` style comments, no block comments currently
 
 In template expressions the *namespaces* `$x` where `x` is a digit can be used to move up the "scope chain". Here `$0 == this`, `$1` is the parent scope etc. Note that whenever any name `foo` is resolved the context/scope chain is always walked from current to top level until a binding is found. If that is not possible an error is thrown.
 
@@ -99,6 +100,16 @@ $$/if$$
 Here `$$#else` is optional, and `$$#elif$$` can occur 0 or more times. `<expr>` denotes a usual expression evaluated against the current context/scope to a Boolean value.
 
 The if directive does not introduce a new scope.
+
+Note that the *expression* syntax also supports an if *expresison*, e.g. consider
+
+```
+$$#if Check()$$
+  Output if Check() returns true.
+$$/if$$
+
+$$if Check() 'output if Check() returns true' /$$
+```
 
 ### `$$#each$$`
 The each directive can be used to iterate over an enumerable collection after which each object of the collection becomes the current scope. It's syntax is
@@ -200,6 +211,19 @@ This differs from the `#let` directive in that `#let` only binds a name within t
 The `#literal` directive can be used to output any containing source *as-is*. It's similar to xml CDATA. This directive cannot be nested, i.e. the body of the literal directive must not contain `$$/literal$$`.
 Note that if this is used with the `ReplaceDeep` method, the body of the directive will be evaluated in a subsequent pass.
 
+### `$$#comment$$`
+Can be used as a comment in any source, simply ignores its arguments and body. Cannot be nested.
+
+```
+$$#comment This text is completely ignored /$$
+
+$$#comment$$
+   as is this...
+$$/comment$$
+```
+
+This can be useful for adding comments to files that do not support native comments or if comments should not exist in a final processed file.
+
 ## Case Sensitivity and Cultures
 
 By default Jefferson is case insensitive in how variables resolve and things like string comparison. This can be made case sensitive using a `TemplateOptions` instance passed to the constructor of the parser, however, no more granular control (e.g. case insensitive resolution but case sensitive string matching) is currently possible.
@@ -227,7 +251,7 @@ FAQ
 I'm not a believer in creationism, this evolved from more humble beginnings and then just ... grew.
 
 #### Is it fast?
-It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance. With regards to parsing the focus has been to keep the parser relatively simple vs as performant as compturely possible.
+It's fast as in things are compiled using Linq expression trees. Whether it's *actually* fast I don't know as I have not done performance tests just yet. Also, the focus is on runtime performance, not parsing peformance. With regards to parsing the focus has been to keep the parser relatively simple vs as performant as possible.
 
 #### Is the API stable?
 No. This is just an initial version and the API may change. In particular the area of how names are resolved is likely to be updated. So I don't guarantee any backwards compatibility at the moment.

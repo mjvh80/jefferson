@@ -1,4 +1,5 @@
 ﻿using Jefferson.FileProcessing;
+using System;
 using System.IO;
 using System.Linq;
 using Xunit;
@@ -78,11 +79,34 @@ namespace Jefferson.Tests
          Assert.Throws<FileNotFoundException>(() => FileItem.FromFile(nonExistingFile));
       }
 
+      [Fact]
       public void Cannot_create_hierarchy_from_non_existing_directory()
       {
          var nonExistingFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
          Assert.False(Directory.Exists(nonExistingFile));
          Assert.Throws<DirectoryNotFoundException>(() => FileHierarchy.FromDirectory(nonExistingFile));
+      }
+
+      [Fact]
+      public void Dynamic_support_works()
+      {
+         var p = new SimpleFileProcessor<TestContext>(new TestContext());
+         dynamic d = p;
+         Assert.Equal<Object>(null, d.I_dont_exist);
+
+         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Directory.CreateDirectory(tempDir);
+
+         var parent = Path.Combine(tempDir, "parent.txt");
+         File.WriteAllText(parent, @"
+         $$#define foo = 'foobar' /$$
+         parent
+         ");
+
+         p.ProcessFileHierarchy(FileHierarchy.FromDirectory(tempDir));
+
+         // Defined in the template.
+         Assert.Equal("foobar", d.foo);
       }
    }
 }

@@ -78,16 +78,17 @@ namespace Jefferson
          return null;
       }
 
-      public static Expression ResolveMethod(String name, Expression target, Type type, params Expression[] @params)
+      public static Expression ResolveMethod(String name, Expression target, params Expression[] @params)
       {
          Boolean ignore;
-         return ResolveMethod(name, target, type, false, out ignore, @params);
+         return ResolveMethod(name, target, false, out ignore, @params);
       }
 
-      public static Expression ResolveMethod(String name, Expression target, Type type, Boolean ignoreCase, out Boolean ambiguous, params Expression[] @params)
+      public static Expression ResolveMethod(String name, Expression target, Boolean ignoreCase, out Boolean ambiguous, params Expression[] @params)
       {
          ambiguous = false;
 
+         var type = target.Type;
          var argTypes = @params.Select(p => p.Type);
 
          var bindingFlags = BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;

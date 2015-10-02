@@ -42,6 +42,7 @@
     <Compile Include="Binders\IndexerVariableBinder.cs" />
     <Compile Include="Binders\ReadOnlyBinder.cs" />
     <Compile Include="Directives\BlockDirective.cs" />
+    <Compile Include="Directives\CommentDirective.cs" />
     <Compile Include="Directives\DefineAndUndefDirectives.cs" />
     <Compile Include="Directives\EachDirective.cs" />
     <Compile Include="Directives\IDirective.cs" />

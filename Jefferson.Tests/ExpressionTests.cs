@@ -256,7 +256,6 @@ namespace Jefferson.Tests
          Assert.Equal("foo", run("Obj('foo')"));
          Assert.Equal("1", run("Obj(1)"));
 
-         Assert.Equal("bar", run("foo(1)")); // can ignore case
          // todo: more and more tests here
       }
 

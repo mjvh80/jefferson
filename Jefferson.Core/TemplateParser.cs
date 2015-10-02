@@ -38,7 +38,7 @@ namespace Jefferson
    {
       private static IDirective[] _GetDefaultDirectives()
       {
-         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective() };
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective() };
       }
 
       /// <summary>

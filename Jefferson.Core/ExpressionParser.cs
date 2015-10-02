@@ -688,7 +688,7 @@ namespace Jefferson
                      if (!isResolved)
                      {
                         var ambiguousMethod = false;
-                        var method = TypeUtils.ResolveMethod(identifier, methodTarget, methodTargetType, ignoreCase, out ambiguousMethod, parameters.ToArray());
+                        var method = TypeUtils.ResolveMethod(identifier, methodTarget, ignoreCase, out ambiguousMethod, parameters.ToArray());
                         if (ambiguousMethod)
                            throw SyntaxException.Create(expr, i, "Ambiguous method call: multiple methods '{0}' found that could match argument types.", identifier);
                         if (method != null)
@@ -710,7 +710,7 @@ namespace Jefferson
                   // Either we previously resolved a delegate, or we just determined the identifier was not a method.
                   if (typeof(Delegate).IsAssignableFrom(result.Type)) // it's a delegate that was already resolved, call that
                   {
-                     result = TypeUtils.ResolveMethod("Invoke", result, result.Type, parameters.ToArray());
+                     result = TypeUtils.ResolveMethod("Invoke", result, parameters.ToArray());
                      if (result == null)
                      {
                         var invoke = result.Type.GetMethod("Invoke"); // note that it exists
