@@ -237,8 +237,14 @@ namespace Jefferson.Tests
 
          public String Foobar(Int32 x) { return x.ToString(); }
          public String Foobar(String x) { return x; }
+         public String Foobar(Int16 x) { return x.ToString(); }
 
-         public String Obj(Object o) {  return o == null ? "null" : o.ToString(); }
+         public String Obj(Object o) { return o == null ? "null" : o.ToString(); }
+      }
+
+      public class TypeCoercionsEx : TypeCoercions
+      {
+
       }
 
       [Fact]
@@ -260,6 +266,16 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Can_call_inherited_method()
+      {
+         var p = new ExpressionParser<TypeCoercionsEx, String>();
+         var c = new TypeCoercionsEx();
+         Func<String, String> run = s => p.ParseExpression(s)(c);
+
+         Assert.Equal("1", run("Foo(1)"));
+      }
+
+      [Fact]
       public void Can_ignore_method_case()
       {
          var p = new ExpressionParser<TypeCoercions, String>();
@@ -272,14 +288,14 @@ namespace Jefferson.Tests
       }
 
       [Fact]
-      public void Cannot_handle_overloading()
+      public void Cannot_handle_overloading_in_some_cases()
       {
          var p = new ExpressionParser<TypeCoercions, String>();
          var c = new TypeCoercions();
          Func<String, String> run = s => p.ParseExpression(s)(c);
 
          // todo: should we attempt to solve these situations?
-         var error = Assert.Throws<SyntaxException>(() => run("Foobar(1)"));
+         var error = Assert.Throws<SyntaxException>(() => run("Foobar(1L)")); // NOTE the Int64 -> cannot choose between two overloads which both convert
          Assert.Contains("Ambiguous method call", error.Message);
       }
 

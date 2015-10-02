@@ -94,9 +94,15 @@ namespace Jefferson
          var bindingFlags = BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;
          if (ignoreCase) bindingFlags |= BindingFlags.IgnoreCase;
 
-         // Optimization: First see if we can find *any* method of the given name, avoids heavier work.
+         // First see if we can find *any* method of the given name, avoids heavier work.
+         MethodInfo exactHit;
          try
          {
+            exactHit = type.GetMethod(name, bindingFlags | BindingFlags.ExactBinding, null, @params.Select(p => p.Type).ToArray(), null);
+            if (exactHit != null)
+               return Expression.Call(exactHit.IsStatic ? null : target, exactHit, exactHit.GetParameters().Zip(@params, (p, arg) => Expression.Convert(arg, p.ParameterType)).ToArray());
+
+            // Look for any method of the given name.
             if (type.GetMethod(name, bindingFlags) == null)
                return null;
          }
