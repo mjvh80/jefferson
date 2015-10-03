@@ -87,6 +87,17 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Can_pass_null_to_non_object_type()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define foo(bar) = 'bar = ' + bar /$$
+         $$foo(null)$$
+         ", context);
+
+         Assert.Equal("bar =", result.Trim());
+      }
+
+      [Fact]
       public void Comments_can_effectively_disable_directives()
       {
          var result = new TemplateParser(new DefineDirective()).Replace("x = $$//#define x$$", context);

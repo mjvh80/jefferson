@@ -408,9 +408,9 @@ namespace Jefferson
             if (!e1.Type.IsEnum && !e2.Type.IsEnum) return f(e1, e2);
 
             if (e1.Type.IsEnum)
-               e2 = TypeUtils.GetConverter(e2.Type, e1.Type, ignoreCase)(e2);
+               e2 = TypeUtils.GetConverter(e2, e1.Type, ignoreCase)(e2);
             else
-               e1 = TypeUtils.GetConverter(e1.Type, e2.Type, ignoreCase)(e1);
+               e1 = TypeUtils.GetConverter(e1, e2.Type, ignoreCase)(e1);
 
             return f(e1, e2);
          };

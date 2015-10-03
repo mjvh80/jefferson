@@ -78,6 +78,26 @@ namespace Jefferson
          return null;
       }
 
+      public static Func<Expression, Expression> GetConverter(Expression from, Expression to, Boolean? ignoreCase = null)
+      {
+         return GetConverter(from, to.Type, ignoreCase);
+      }
+
+      public static Func<Expression, Expression> GetConverter(Expression from, Type to, Boolean? ignoreCase = null)
+      {
+         // Convert "null" to the right type.
+         if (from.Type == typeof(Object) && !to.IsValueType)
+         {
+            // Note: the only time this constant expression exists in our tree is if we've added it seeing keyword "null".
+            // At the time, however, we did not have information regarding type.
+            var @const = from as ConstantExpression;
+            if (@const.Value == null)
+               return e => Expression.Default(to);
+         }
+
+         return GetConverter(from.Type, to, ignoreCase);
+      }
+
       public static Expression ResolveMethod(String name, Expression target, params Expression[] @params)
       {
          Boolean ignore;
@@ -89,7 +109,6 @@ namespace Jefferson
          ambiguous = false;
 
          var type = target.Type;
-         var argTypes = @params.Select(p => p.Type);
 
          var bindingFlags = BindingFlags.Static | BindingFlags.Instance | BindingFlags.Public | BindingFlags.InvokeMethod;
          if (ignoreCase) bindingFlags |= BindingFlags.IgnoreCase;
@@ -120,9 +139,7 @@ namespace Jefferson
          var candidates = methods.Select(m => new
          {
             Method = m,
-            ConvertedParameters = m.GetParameters().Zip(argTypes, (p, arg) => new { p.ParameterType, arg })
-                                   .Select(pair => GetConverter(from: pair.arg, to: pair.ParameterType))
-                                   .ToArray()
+            ConvertedParameters = m.GetParameters().Zip(@params, (p, arg) => TypeUtils.GetConverter(arg, p.ParameterType, ignoreCase)).ToArray()
          })
          .Where(c => c.ConvertedParameters.All(param => param != null))
          .ToArray();
@@ -201,7 +218,7 @@ namespace Jefferson
 
       public static readonly BinConversion ConvertIfOneBoolean = f => (e1, e2) =>
       {
-         Func<Expression, Expression> convertToBool = e => GetConverter(e.Type, typeof(Boolean))(e);
+         Func<Expression, Expression> convertToBool = e => GetConverter(e, typeof(Boolean))(e);
 
          if (e1._is_<Boolean>() || e2._is_<Boolean>())
             return f(convertToBool(e1), convertToBool(e2));
