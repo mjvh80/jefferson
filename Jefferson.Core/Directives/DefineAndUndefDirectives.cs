@@ -24,7 +24,6 @@ namespace Jefferson.Directives
          get { return true; }
       }
 
-      // note: return null not empty
       private Tuple<String, String>[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
       {
          var idx = input.IndexOf('(');
@@ -43,7 +42,7 @@ namespace Jefferson.Directives
          name = input.Substring(0, idx);
 
          if (lidx == idx + 1)
-            return null; // () no params
+            return new Tuple<String, String>[0];
 
          var @params = new List<Tuple<String, String>>();
          for (var i = idx + 1; i < input.Length; )
@@ -120,12 +119,9 @@ namespace Jefferson.Directives
             var name = eqIdx < 0 ? binding.Substring(0) : binding.Substring(0, eqIdx);
             name = name.Trim();
 
-            var @params = _ParseParameters(parserContext, name, out name); Debug.Assert(@params == null || @params.Length > 0);
+            var @params = _ParseParameters(parserContext, name, out name);
             var typedName = _ParseTypedName(name);
             name = typedName.Item2;
-
-            //if (eqIdx >= 0 && @params != null)
-            //   throw parserContext.SyntaxError(0, "Unexpected arguments found in empty define directive.");
 
             if (!ExpressionParser<Object, Object>.IsValidName(name))
                throw parserContext.SyntaxError(0, "Variable '{0}' has an invalid name.", name);
@@ -152,7 +148,7 @@ namespace Jefferson.Directives
                if (haveParams)
                {
                   paramBinder = new _ParameterBinder();
-                  paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>(parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+                  paramBinder.ParamDecls = new Dictionary<String, ParameterExpression>(@params.Length, parserContext.Options.IgnoreCase ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                   foreach (var p in @params)
                   {
                      var paramType = Type.GetType(_CSharpToDotNetType(p.Item1, parserContext.Options.IgnoreCase), throwOnError: false, ignoreCase: parserContext.Options.IgnoreCase);
@@ -197,6 +193,7 @@ namespace Jefferson.Directives
                   Type funcType;
                   switch (@params.Length)
                   {
+                     case 0: funcType = typeof(Func<>); break;
                      case 1: funcType = typeof(Func<,>); break;
                      case 2: funcType = typeof(Func<,,>); break;
                      case 3: funcType = typeof(Func<,,,>); break;
@@ -207,6 +204,9 @@ namespace Jefferson.Directives
                   }
 
                   funcType = funcType.MakeGenericType(paramBinder.ParamDecls.Select(p => p.Value.Type).Concat(new[] { returnType }).ToArray());
+
+                  // Ensure that e.g. string x() = 1 works (or more common x() = 1).
+                  var converter = @value == null ? null : TypeUtils.GetConverter(@value.OutputType, returnType, parserContext.Options.IgnoreCase);
 
                   compiledVars.Add(name, new CompiledExpression<Object, Object>
                   {
@@ -224,7 +224,8 @@ namespace Jefferson.Directives
                                  :
                         // The result is an inline function. Invoke it and convert the type.
                         // Note that this type conversion will not fail at runtime!
-                                 Expression.Convert(Expression.Invoke(@value.Ast, Expression.Convert(ctxParam, typeof(Object))), @value.OutputType),
+                                 converter(Expression.Convert(Expression.Invoke(@value.Ast, Expression.Convert(ctxParam, typeof(Object))), @value.OutputType)),
+
                                  paramBinder.ParamDecls.Values),
                               ctxParam),
                      OutputType = funcType

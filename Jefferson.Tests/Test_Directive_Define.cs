@@ -214,11 +214,28 @@ namespace Jefferson.Tests
       }
 
       [Fact]
-      public void Define_with_parameters_must_have_body()
+      public void Define_with_parameters_must_have_body_if_no_equals()
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
          $$#define a(b,c,d)/$$
          ", context));
+
+         Assert.Contains("Missing #define body", error.Message);
+      }
+
+      [Fact]
+      public void Can_define_parameterless_function()
+      {
+         var p = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define count = 1 /$$
+         $$#define disp() = count /$$
+         $$disp()$$
+         $$#define count = 2 /$$
+         $$disp()$$
+         ", context);
+
+         Assert.Contains("1", p);
+         Assert.Contains("2", p);
       }
 
       [Fact]
