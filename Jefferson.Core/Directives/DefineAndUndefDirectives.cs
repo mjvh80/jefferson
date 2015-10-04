@@ -102,6 +102,7 @@ namespace Jefferson.Directives
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
 
          var haveSource = source != null; // empty string is empty body
+         var haveBinding = false;
 
          for (var startIdx = 0; ; )
          {
@@ -109,11 +110,17 @@ namespace Jefferson.Directives
 
             // ; can only be used for multiple key value pair style definitions.
             var bindingLen = (varSepIdx < 0 ? arguments.Length : varSepIdx) - startIdx;
-            if (bindingLen == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
+            if (bindingLen == 0 && varSepIdx < 0) break;
 
             var binding = arguments.Substring(startIdx, bindingLen).Trim();
-            if (binding.Length == 0) throw parserContext.SyntaxError(startIdx, "Invalid variable binding found: empty.");
+            if (binding.Length == 0 && varSepIdx < 0) break;
+            if (binding.Length == 0)
+            {
+               startIdx = varSepIdx + 1;
+               continue;
+            }
 
+            haveBinding = true;
             var eqIdx = binding.IndexOf('=');
 
             var name = eqIdx < 0 ? binding.Substring(0) : binding.Substring(0, eqIdx);
@@ -261,6 +268,9 @@ namespace Jefferson.Directives
 
             startIdx = varSepIdx + 1;
          }
+
+         if (!haveBinding)
+            throw parserContext.SyntaxError(0, "Expected a name to bind to something, got nothing.");
 
          var currentContext = parserContext.GetNthContext(0);
          var body = new List<Expression>(compiledVars.Count + 1);

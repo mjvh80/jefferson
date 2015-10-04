@@ -258,6 +258,27 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Define_definition_can_be_multiline_3()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define 
+               x = 
+                  1;
+               y 
+                  = 2;
+               z 
+                  = 
+
+            3
+         /$$
+
+         $$ x + y + z $$
+         ", context);
+
+         Assert.Contains("6", result);
+      }
+
+      [Fact]
       public void Can_define_parameterless_function()
       {
          var p = new TemplateParser(new DefineDirective()).Replace(@"
@@ -461,10 +482,10 @@ namespace Jefferson.Tests
       }
 
       [Theory]
-      [InlineData("$$#define /$$", "Invalid variable binding")]
-      [InlineData("$$#define/$$", "Invalid variable binding")]
-      [InlineData("$$#define$$$$/define$$", "Invalid variable binding")]
-      [InlineData("$$#define$$  $$/define$$", "Invalid variable binding")]
+      [InlineData("$$#define /$$", "Expected a name to bind to something")]
+      [InlineData("$$#define/$$", "Expected a name to bind to something")]
+      [InlineData("$$#define$$$$/define$$", "Expected a name to bind to something")]
+      [InlineData("$$#define$$  $$/define$$", "Expected a name to bind to something")]
       [InlineData("$$#define 1a='$$ $$/define$$", "invalid name")]
       [InlineData("$$#define a=1$$  $$/define$$", "directive is not empty, unexpected '='")]
       [InlineData("$$#define a(b) = 'f'$$$$/define$$", "Unexpected #define body")]
@@ -485,6 +506,16 @@ namespace Jefferson.Tests
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(input, context));
          Assert.Contains(expectedErrorPart, error.Message);
+      }
+
+      [Fact]
+      public void Can_have_unnecessary_semicolons()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define ;;;x=1;;y=2; /$$
+         $$ x + y - 1$$
+         ", context);
+         Assert.Equal("2", result.Trim());
       }
 
       [Fact]
