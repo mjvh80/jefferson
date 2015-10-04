@@ -2,8 +2,10 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Xunit;
+using Jefferson.Extensions;
 using System.Linq;
 using Xunit.Sdk;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -80,6 +82,15 @@ namespace Jefferson.Tests
                m.Invoke(null, new Object[] { Activator.CreateInstance(p.ParameterType) });
             }
          }
+      }
+
+      [Theory]
+      [InlineData("", 0, -1)][InlineData("  ", 0, 0)][InlineData(" ", -1, -1)]
+      [InlineData(" ", 10, -1)][InlineData("foo bar", 1, 3)][InlineData("foobar\r", 3, 6)]
+      public void Can_find_whitespace(String str, Int32 startAt, Int32 expectedIndex)
+      {
+         var i = str.IndexOfWhiteSpace(startAt);
+         Assert.Equal(expectedIndex, i);
       }
    }
 }

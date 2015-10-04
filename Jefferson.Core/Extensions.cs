@@ -68,6 +68,20 @@ namespace Jefferson.Extensions
                 e._is_<Single>(); // || e._is_<Decimal>();
       }
 
+      public static Int32 IndexOfWhiteSpace(this String str, Int32 startAt = 0)
+      {
+         if (String.IsNullOrEmpty(str)) return -1;
+         if (startAt < 0 || startAt >= str.Length) return -1;
+
+         // todo: can optimize this
+         var i = startAt;
+         for (; i < str.Length; i++)
+            if (Char.IsWhiteSpace(str[i]))
+               return i;
+
+         return -1;
+      }
+
       #region ToStringInvariant
 
       private const String _kNull = null;

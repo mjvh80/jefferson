@@ -378,7 +378,7 @@ namespace Jefferson
                {
                   // We are parsing a directive.
                   // Find the name of the directive, and pass on control.
-                  var dirNameEndIdx = Utils.MinNonNeg(source.IndexOf(' ', idx + 3), source.IndexOf("/$$", idx + 3), source.IndexOf("$$", idx + 3));
+                  var dirNameEndIdx = Utils.MinNonNeg(source.IndexOfWhiteSpace(idx + 3), source.IndexOf("/$$", idx + 3), source.IndexOf("$$", idx + 3));
                   if (dirNameEndIdx < 0) throw SyntaxError(idx, "Could not find end of directive.");
 
                   var dirBodyStartIdx = source.IndexOf("$$", idx + 3);
@@ -495,7 +495,7 @@ namespace Jefferson
                   if (nextStart < 0) throw SyntaxError(nestedStartIdx, "Could not find matching $$.");
                   nextStart += 2;
 
-                  var dirIdx = source.IndexOf(" ", nestedStartIdx + "$$#".Length); // look for $$#<word><space>...$$
+                  var dirIdx = source.IndexOfWhiteSpace(nestedStartIdx + "$$#".Length); // look for $$#<word><space>...$$
                   if (dirIdx < 0 || dirIdx > nextStart - 2) // or $$#<word>$$
                      dirIdx = nextStart - 2;
 

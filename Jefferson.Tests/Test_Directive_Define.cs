@@ -223,6 +223,40 @@ namespace Jefferson.Tests
          Assert.Contains("Missing #define body", error.Message);
       }
 
+      // todo: x=1; y=2; < trailing semicolon should be allowed
+
+      [Fact]
+      public void Define_definition_can_be_multiline()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define
+               x = 1;
+               y = 2;
+               z = 3
+         /$$
+
+         $$ x + y + z $$
+         ", context);
+
+         Assert.Contains("6", result);
+      }
+
+      [Fact]
+      public void Define_definition_can_be_multiline_2()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define 
+               x = 1;
+               y = 2;
+               z = 3
+         /$$
+
+         $$ x + y + z $$
+         ", context);
+
+         Assert.Contains("6", result);
+      }
+
       [Fact]
       public void Can_define_parameterless_function()
       {
