@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
-   public class EachDirective : IDirective
+   public sealed class EachDirective : IDirective
    {
       private readonly Boolean _mIsReadonly;
 

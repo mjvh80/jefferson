@@ -1,6 +1,7 @@
 ﻿using Jefferson.Output;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
@@ -27,6 +28,8 @@ namespace Jefferson.Directives
 
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
+         Contract.Assert(source != null);
+
          // Compile variables.
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
 

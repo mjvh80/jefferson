@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -100,46 +101,5 @@ namespace Jefferson
       {
          return MinNonNeg((IEnumerable<Int32>)seq);
       }
-
-      #region Debug Assertions
-
-      [Conditional("DEBUG")]
-      public static void AssertNotNull(Object @object, String msg = null)
-      {
-         if (msg == null) DebugAssert(@object != null);
-         else DebugAssert(@object != null, msg);
-      }
-
-      [Conditional("DEBUG")]
-      public static void DebugAssert(Boolean assertion)
-      {
-         // First try an actual assertion, but they don't always show.
-         System.Diagnostics.Debug.Assert(assertion);
-
-         if (!assertion)
-         {
-            if (System.Diagnostics.Debugger.IsAttached)
-               System.Diagnostics.Debugger.Break();
-            else
-               throw new Exception("Assertion failure.");
-         }
-      }
-
-      [Conditional("DEBUG")]
-      public static void DebugAssert(Boolean assertion, String msg)
-      {
-         // First try an actual assertion, but they don't always show.
-         System.Diagnostics.Debug.Assert(assertion, msg);
-
-         if (!assertion)
-         {
-            if (System.Diagnostics.Debugger.IsAttached)
-               System.Diagnostics.Debugger.Break();
-            else
-               throw new Exception("Assertion failure: " + msg);
-         }
-      }
-
-      #endregion
    }
 }

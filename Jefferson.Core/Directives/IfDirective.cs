@@ -1,11 +1,12 @@
 ﻿using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
-   public class IfDirective : IDirective
+   public sealed class IfDirective : IDirective
    {
       public String Name
       {
@@ -41,7 +42,7 @@ namespace Jefferson.Directives
             if (idx > 0) // elif
             {
                closeIdx = source.IndexOf("$$", idx);
-               Utils.DebugAssert(closeIdx >= 0, "found unmatched $$"); // should have been caught when looking for nested directives
+               Contract.Assume(closeIdx >= 0, "found unmatched $$"); // should have been caught when looking for nested directives
 
                expr = source.Substring(idx, closeIdx - idx);
                closeIdx += 2;
@@ -62,6 +63,7 @@ namespace Jefferson.Directives
                break;
 
             // Else or Else if.
+            Contract.Assume(endIfIdx <= source.Length - 6);
             switch (source.Substring(endIfIdx, 6))
             {
                case "$$#els": // else
@@ -86,8 +88,12 @@ namespace Jefferson.Directives
          return _MakeIfExpression(ifStmt);
       }
 
-      protected static Expression _MakeIfExpression(List<Tuple<Expression, Expression>> stmts, Int32 i = 0)
+      private static Expression _MakeIfExpression(List<Tuple<Expression, Expression>> stmts, Int32 i = 0)
       {
+         Contract.Requires(stmts != null);
+         Contract.Requires(i >= 0 && i < stmts.Count);
+         Contract.Ensures(Contract.Result<Expression>() != null);
+
          if (stmts[i].Item1 == null) // else
             return stmts[i].Item2;
 

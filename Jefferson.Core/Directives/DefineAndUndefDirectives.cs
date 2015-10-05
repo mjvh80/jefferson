@@ -2,12 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
-   public class DefineDirective : IDirective
+   public sealed class DefineDirective : IDirective
    {
       public String Name
       {
@@ -26,6 +27,9 @@ namespace Jefferson.Directives
 
       private Tuple<String, String>[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
       {
+         Contract.Requires(parserContext != null);
+         Contract.Requires(input != null);
+
          var idx = input.IndexOf('(');
          if (idx < 0)
          {
@@ -64,6 +68,8 @@ namespace Jefferson.Directives
       /// </summary>
       private static Tuple<String, String> _ParseTypedName(String argStr)
       {
+         Contract.Requires(argStr != null);
+
          var spaceIdx = argStr.IndexOf(' ');
          if (spaceIdx > 0 && spaceIdx < argStr.Length - 1)
             return Tuple.Create(argStr.Substring(0, spaceIdx), argStr.Substring(spaceIdx + 1));
@@ -73,6 +79,8 @@ namespace Jefferson.Directives
 
       private static String _CSharpToDotNetType(String type, Boolean ignoreCase)
       {
+         Contract.Requires(type != null);
+
          if (ignoreCase)
             type = type.ToLowerInvariant();
 
@@ -318,7 +326,7 @@ namespace Jefferson.Directives
       }
    }
 
-   public class UndefDirective : IDirective
+   public sealed class UndefDirective : IDirective
    {
       public String Name
       {

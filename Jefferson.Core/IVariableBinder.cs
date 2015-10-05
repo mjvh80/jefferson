@@ -1,5 +1,5 @@
-﻿using Jefferson.Parsing;
-using System;
+﻿using System;
+using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson
@@ -15,6 +15,7 @@ namespace Jefferson
    /// ]]>
    /// Nested scopes, such as those created by $$#each$$ may themselves support variable declarations in that scope.
    /// </summary>
+   [ContractClass(typeof(Contracts.VariableBinderContract))]
    public interface IVariableBinder
    {
       Expression BindVariableRead(Expression currentContext, String name);
@@ -22,5 +23,41 @@ namespace Jefferson
       Expression UnbindVariable(Expression currentContext, String name);
 
       Expression BindVariableWrite(Expression currentContext, String name, Expression value);
+   }
+
+   namespace Contracts
+   {
+      [ContractClassFor(typeof(IVariableBinder))]
+      public abstract class VariableBinderContract : IVariableBinder
+      {
+         public Expression BindVariableRead(Expression currentContext, String name)
+         {
+            Contract.Requires(currentContext != null);
+            Contract.Requires(name != null);
+
+            // result may be null
+
+            return null;
+         }
+
+         public Expression UnbindVariable(Expression currentContext, String name)
+         {
+            Contract.Requires(currentContext != null);
+            Contract.Requires(name != null);
+
+            // result may be null
+            return null;
+         }
+
+         public Expression BindVariableWrite(Expression currentContext, String name, Expression value)
+         {
+            Contract.Requires(currentContext != null);
+            Contract.Requires(name != null);
+            Contract.Requires(value != null);
+
+            // result may be null
+            return null;
+         }
+      }
    }
 }

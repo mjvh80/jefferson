@@ -20,14 +20,13 @@ using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 
-// todo:
-// - contracts 
 
 namespace Jefferson
 {
@@ -63,8 +62,6 @@ namespace Jefferson
          if (directives != null)
             foreach (var directive in directives.Where(d => d != null))
             {
-               if (directive.Name == null) throw Utils.Error("Invalid directive: null name");
-
                if (!_sDirectiveNameExpr.IsMatch(directive.Name))
                   throw Utils.Error("Directive '{0}' contains invalid characters.");
 
@@ -96,6 +93,8 @@ namespace Jefferson
       /// </summary>
       public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
       {
+         Contract.Requires(source != null);
+         Contract.Ensures(Contract.Result<Action<TContext, IOutputWriter>>() != null);
          return Parse<TContext>(source, contextType, decls).Compile();
       }
 
@@ -109,7 +108,8 @@ namespace Jefferson
       /// <param name="except">If false, the parser won't throw if a variable is not declared. The empty string is used then.</param>
       public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
       {
-         Ensure.NotNull(source, "source");
+         Contract.Requires(source != null);
+         Contract.Ensures(Contract.Result<Expression>() != null);
 
          if (contextType == null) contextType = typeof(TContext);
 
@@ -131,8 +131,9 @@ namespace Jefferson
       /// </summary>
       public String Replace(String source, Object context)
       {
-         Ensure.NotNull(source, "source");
-         Ensure.NotNull(context, "context");
+         Contract.Requires(source != null);
+         Contract.Requires(context != null);
+         Contract.Ensures(Contract.Result<String>() != null);
 
          var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
          var buffer = new StringBuilder();
@@ -146,6 +147,10 @@ namespace Jefferson
       /// </summary>
       public String ReplaceDeep(String source, Object context)
       {
+         Contract.Requires(source != null);
+         Contract.Requires(context != null);
+         Contract.Ensures(Contract.Result<String>() != null);
+
          var loop = 1;
          do
          {
@@ -167,8 +172,8 @@ namespace Jefferson
       /// </summary>
       public Object EvaluateExpression(String expr, Object context)
       {
-         Ensure.NotNull(expr, "expr");
-         Ensure.NotNull(context, "context");
+         Contract.Requires(expr != null);
+         Contract.Requires(context != null);
 
          var ctx = new TemplateParserContext("")
          {
@@ -198,7 +203,7 @@ namespace Jefferson
       {
          internal TemplateParserContext(String source)
          {
-            Ensure.NotNull(source, "source");
+            Contract.Requires(source != null);
 
             Source = source;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
@@ -255,7 +260,7 @@ namespace Jefferson
          public void PopScope()
          {
             var count = ContextTypes.Count;
-            Utils.DebugAssert(count == ContextDeclarations.Count);
+            Contract.Assert(count == ContextDeclarations.Count);
             ContextTypes.RemoveAt(count - 1);
             ContextDeclarations.RemoveAt(count - 1);
          }
@@ -301,10 +306,10 @@ namespace Jefferson
          /// </summary
          public Expression GetNthContext(Int32 n)
          {
-            Utils.DebugAssert(RuntimeContexts.Type == typeof(List<Object>));
+            Contract.Assert(RuntimeContexts.Type == typeof(List<Object>));
 
             var indexer = typeof(List<Object>).GetProperty("Item");
-            Utils.AssertNotNull(indexer);
+            Contract.Assume(indexer != null);
 
             var idx = ContextTypes.Count - 1 - n;
             return Expression.Convert(Expression.MakeIndex(RuntimeContexts, indexer, new[] { Expression.Constant(idx) }),
@@ -526,13 +531,14 @@ namespace Jefferson
             // Restart search after nested directive.
             if (nestedAfterEndIdx < 0) return -1; // got nowehere else to go
 
-            Utils.DebugAssert(!ignoreNesting);
+            Contract.Assert(!ignoreNesting);
             return FindDirectiveEnd(source, nestedAfterEndIdx, false, terminators);
          }
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
          {
-            Ensure.NotNull(expr, "expr");
+            Contract.Requires(expr != null);
+            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
 
             var parser = new ExpressionParser<Object, TOutput>();
 
@@ -555,6 +561,9 @@ namespace Jefferson
          /// </summary>
          public TOutput EvaluateExpression<TContext, TOutput>(String expr, TContext context)
          {
+            Contract.Requires(expr != null);
+
+            Contract.Assert(RuntimeContexts == null);
             if (RuntimeContexts != null)
                throw Utils.InvalidOperation("EvaluateExpression cannot be used if Parse is used");
 
@@ -604,7 +613,7 @@ namespace Jefferson
          */
          private Expression ResolveName(Expression thisExpr, String name, String typeName, NameResolverDelegate defaultResolver)
          {
-            Utils.DebugAssert(thisExpr.Type == GetNthContext(0).Type);
+            Contract.Assert(thisExpr.Type == GetNthContext(0).Type);
 
             var startIndex = 0;
 
@@ -612,6 +621,7 @@ namespace Jefferson
             {
                if (_sParentExpr.IsMatch(typeName))
                {
+                  Contract.Assume(typeName.Length > 1);
                   startIndex = Int32.Parse(typeName.Substring(1));
 
                   // special name which moves up the context stack.
@@ -651,6 +661,11 @@ namespace Jefferson
          /// </summary>
          public Expression SetVariable(Expression thisExpr, String name, Int32 relativePositionInSource, Expression @value)
          {
+            Contract.Requires(thisExpr != null);
+            Contract.Requires(name != null);
+            Contract.Requires(@value != null);
+            Contract.Ensures(Contract.Result<Expression>() != null);
+
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
 
@@ -689,6 +704,10 @@ namespace Jefferson
 
          public Expression RemoveVariable(Expression thisExpr, String name, Int32 relativePositionInSource)
          {
+            Contract.Requires(thisExpr != null);
+            Contract.Requires(name != null);
+            Contract.Ensures(Contract.Result<Expression>() != null);
+
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
 

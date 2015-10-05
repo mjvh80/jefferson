@@ -157,7 +157,7 @@ namespace Jefferson.Tests
          var p = new ExpressionParser<Context, String>();
          p.ParseExpression("Actual", new ActualContext());
 
-         Assert.Throws<ArgumentNullException>(() => p.ParseExpression("Actual", (ActualContext)null));
+         TestUtils.AssertThrowsContractException(() => p.ParseExpression("Actual", (ActualContext)null));
 
          p.ParseExpression<ActualContext>("Actual");
       }
@@ -924,7 +924,6 @@ namespace Jefferson.Tests
          AssertError(() => parser.ParseExpression("")(new Context()));
          AssertError(() => parser.ParseExpression("2E")(new Context()));
          AssertError(() => parser.ParseExpression("2.3E+")(new Context()));
-         AssertError(() => parser.ParseExpression(null)(new Context()));
          AssertError(() => parser.ParseExpression("1 == 1 ==")(new Context()));
          AssertError(() => parser.ParseExpression("1 <<< 1")(new Context()));
          AssertError(() => parser.ParseExpression("1 ==")(new Context()));
@@ -938,6 +937,8 @@ namespace Jefferson.Tests
          //   AssertError(() => parser.ParseExpression("\"foobar\"")(new Context()));
 
          AssertError(() => parser.ParseExpression("Foo.2Bar == true")(new Context()));
+
+         TestUtils.AssertThrowsContractException(() => parser.ParseExpression(null)(new Context()));
       }
 
       [Fact]

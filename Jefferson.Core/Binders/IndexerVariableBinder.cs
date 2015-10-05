@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -16,12 +17,14 @@ namespace Jefferson.Binders
 
       public IndexerVariableBinder(IDictionary<String, Type> variableTypeDeclarations)
       {
-         Ensure.NotNull(variableTypeDeclarations, "variableTypeDeclarations");
+         Contract.Requires(variableTypeDeclarations != null);
          mTypeDeclarations = variableTypeDeclarations;
       }
 
       private PropertyInfo _GetIndexer(Expression currentContext)
       {
+         Contract.Requires(currentContext != null);
+
          // Todo: we could look for e.g. things like Chars... i.e. the correctly marked indexer.
          var indexer = currentContext.Type.GetProperty("Item");
          if (indexer == null)

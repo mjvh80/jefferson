@@ -1,5 +1,6 @@
 ﻿using Jefferson.Extensions;
 using System;
+using System.Diagnostics.Contracts;
 
 namespace Jefferson
 {
@@ -33,11 +34,14 @@ namespace Jefferson
 
       public static SyntaxException Create(String source, Int32 position, String msg = null, params Object[] args)
       {
+         Contract.Requires(source != null);
          return Create(null, source, position, msg, args);
       }
 
       public static SyntaxException Create(Exception inner, String source, Int32 position, String msg = null, params Object[] args)
       {
+         Contract.Requires(source != null);
+
          var line = _GetLine(source, position);
          var lineNum = _FindLineNumber(source, ref position);
          var positionalMessage = lineNum + ": " + line + "\r\n" + new String(' ', lineNum.ToStringInvariant().Length) + "  ";
@@ -55,6 +59,9 @@ namespace Jefferson
 
       internal static String _GetLine(String source, Int32 position)
       {
+         Contract.Requires(source != null);
+
+         if (source.Length == 0) return source;
          if (position > source.Length - 1) position = source.Length - 1;
          if (position < 0) position = 0;
 

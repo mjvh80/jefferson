@@ -2,7 +2,7 @@
 
 namespace Jefferson.Directives
 {
-   public class CommentDirective : LiteralDirective
+   public sealed class CommentDirective : LiteralDirective
    {
       public override String Name
       {

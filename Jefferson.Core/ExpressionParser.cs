@@ -28,6 +28,7 @@ using BinOp = System.Func<System.Linq.Expressions.Expression, System.Linq.Expres
 namespace Jefferson
 {
    using System.Collections.Concurrent;
+   using System.Diagnostics.Contracts;
    using BinConversion = Func<BinOp, BinOp>;
    using BinOpMap = Tuple<String[], BinOp>;
    using Production = Func<Expression>;
@@ -128,6 +129,7 @@ namespace Jefferson
 
       public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr)
       {
+         Contract.Requires(expr != null);
          return ParseExpression(expr, null);
       }
 
@@ -136,8 +138,8 @@ namespace Jefferson
       /// </summary>
       public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Object instanceOfActualType)
       {
-         if (instanceOfActualType == null)
-            throw new ArgumentNullException("instanceOfActualType");
+         Contract.Requires(expr != null);
+         Contract.Requires(instanceOfActualType != null);
 
          return ParseExpression(expr, instanceOfActualType.GetType());
       }
@@ -147,6 +149,7 @@ namespace Jefferson
       /// </summary>
       public ExpressionDelegate<TContext, TOutput> ParseExpression<TDerivedContext>(String expr) where TDerivedContext : TContext
       {
+         Contract.Requires(expr != null);
          return ParseExpression(expr, typeof(TDerivedContext));
       }
 
@@ -155,11 +158,14 @@ namespace Jefferson
       /// </summary>
       public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, Type actualContextType)
       {
+         Contract.Requires(expr != null);
          return ParseExpression(expr, null, ExpressionParsingFlags.None, actualContextType);
       }
 
       public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
       {
+         Contract.Requires(expr != null);
+
          try
          {
             var compileResult = _ParseExpressionInternal(expr, nameResolver, flags, actualContextType);
@@ -189,6 +195,8 @@ namespace Jefferson
 
       public Boolean TryParseExpression(String expr, out ExpressionDelegate<TContext, TOutput> expression, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
       {
+         Contract.Requires(expr != null);
+
          expression = null;
 
          // For now, we'll do this using exceptions. Maybe at some point we can optimize a bit.
@@ -290,6 +298,11 @@ namespace Jefferson
       //             ( identifierExpr )
       internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
       {
+         Contract.Requires(expr != null);
+         Contract.Ensures(Contract.Result<CompiledExpression<TContext, TOutput>>() != null);
+         Contract.Ensures(Contract.Result<CompiledExpression<TContext, TOutput>>().Ast != null);
+         Contract.Ensures(Contract.Result<CompiledExpression<TContext, TOutput>>().OutputType != null);
+
          #region Parser
 
          if (String.IsNullOrEmpty(expr) && (flags & ExpressionParsingFlags.EmptyExpressionIsEmptyString) == 0)
@@ -617,7 +630,7 @@ namespace Jefferson
 
                if (advanceIfMatch("\\.")) // member access
                {
-                  Utils.DebugAssert(identifier.Length == 0);
+                  Contract.Assert(identifier.Length == 0);
 
                   identifier = nameToken();
 
@@ -634,7 +647,7 @@ namespace Jefferson
                }
                else if (advanceIfMatch("\\[")) // array accessor
                {
-                  Utils.DebugAssert(identifier.Length == 0);
+                  Contract.Assert(identifier.Length == 0);
 
                   // Todo: could go wild here too.. indexers with multiple arguments.
                   var index = expression();

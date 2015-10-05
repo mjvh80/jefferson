@@ -51,7 +51,7 @@ namespace Jefferson
          // Strings convert to enums.
          if (to.IsEnum && from == typeof(String))
          {
-            Utils.DebugAssert(ignoreCase != null);
+            Contract.Assert(ignoreCase != null);
             return e =>
             {
                e = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(to), e, Expression.Constant(ignoreCase));
