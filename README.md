@@ -238,12 +238,6 @@ outputs
 
 `1,2`
 
-## Sponsors ##
-Our build server is kindly provided by [CodeBetter](http://codebetter.com/) and [JetBrains](http://www.jetbrains.com/).
-
-![YouTrack and TeamCity](http://www.jetbrains.com/img/banners/Codebetter300x250.png)
-
-
 FAQ
 ===
 
