@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace Jefferson.Build
 {
@@ -24,6 +25,16 @@ namespace Jefferson.Build
          var result = new AssemblyInfo();
          result.AddAttributes(asm);
          result.OptAddVariable("Version", asm.GetName().Version);
+         return result;
+      }
+
+      public static AssemblyInfo FromAssemblyInfo(String file)
+      {
+         var text = File.ReadAllText(file);
+         var matches = Regex.Matches(text, @"assembly:\s*?Assembly(?<name>.*)\((?<argument>.*)\)");
+         var result = new AssemblyInfo();
+         foreach (Match match in matches)
+            result.AddVariable(match.Groups["name"].Value.Trim(), match.Groups["argument"].Value.Trim().Trim('"'), typeof(String));
          return result;
       }
 
@@ -67,6 +78,12 @@ namespace Jefferson.Build
 
          Console.WriteLine(" -- done");
       }
+
+      public String IncrementBuildNumber(String v)
+      {
+         Version version = Version.Parse(v);
+         return new Version(version.Major, version.Minor, version.Build + 1, 0).ToString();
+      }
    }
 
    class Program
@@ -77,23 +94,44 @@ namespace Jefferson.Build
          Environment.Exit(1);
       }
 
+      private static AssemblyInfo _ReadAsmInfo(String infoFile)
+      {
+         var extension = Path.GetExtension(infoFile);
+
+         if (extension == ".dll")
+         {
+            Assembly asm = null;
+            try
+            {
+               asm = Assembly.ReflectionOnlyLoadFrom(infoFile);
+            }
+            catch (Exception e)
+            {
+               _Error("Failed to load assembly {0}: {1}", infoFile, e.Message); throw;
+            }
+
+            return AssemblyInfo.FromAsm(asm);
+         }
+
+         if (extension == ".cs")
+            return AssemblyInfo.FromAssemblyInfo(infoFile);
+
+         _Error("File extension not supported: " + extension);
+         return null;
+      }
+
       private static void Main(String[] args)
       {
          if (args.Length < 3) _Error("Not enough arguments.");
 
          var asmFile = args[0];
+         var info = _ReadAsmInfo(asmFile);
 
-         Assembly asm = null;
-         try
-         {
-            asm = Assembly.ReflectionOnlyLoadFrom(args[0]);
-         }
-         catch (Exception e)
-         {
-            _Error("Failed to load assembly {0}: {1}", asmFile, e.Message); throw;
-         }
-
-         var info = AssemblyInfo.FromAsm(asm);
+#if DEBUG
+         info.AddVariable("buildMode", "Debug");
+#else // todo
+         info.AddVariable("buildMode", "Release");
+#endif
 
          foreach (var pair in args.Skip(1).Zip(args.Skip(2), (source, result) => new { Source = source, Target = result }))
          {

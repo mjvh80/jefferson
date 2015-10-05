@@ -32,6 +32,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Jefferson, Version=0.1.22.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Jefferson.0.1.22\lib\net45\Jefferson.dll</HintPath>
+    </Reference>
+    <Reference Include="Jefferson.FileProcessing">
+      <HintPath>..\packages\Jefferson.0.1.22\lib\net45\Jefferson.FileProcessing.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -46,12 +53,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Jefferson.Core\Jefferson.Core.csproj">
-      <Project>{9daa1710-7c91-4523-8dc9-f8d3a9fb3851}</Project>
-      <Name>Jefferson.Core</Name>
-    </ProjectReference>
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

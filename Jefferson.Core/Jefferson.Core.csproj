@@ -140,6 +140,7 @@
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />
+    <None Include="Properties\AssemblyInfo.tmpl.cs" />
     <Compile Include="TemplateOptions.cs" />
     <Compile Include="Output\IOutputWriter.cs" />
     <Compile Include="IVariableBinder.cs" />
@@ -155,7 +156,17 @@
   <ItemGroup>
     <Content Include="NameResolving.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Jefferson.Build\Jefferson.Build.csproj">
+      <Project>{745f078e-087e-4979-8fbe-ec9ab5b52316}</Project>
+      <Name>Jefferson.Build</Name>
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PreBuildEvent>"$(ProjectDir)..\Jefferson.Build\bin\$(ConfigurationName)\Jefferson.Build.exe" "$(ProjectDir)Properties\AssemblyInfo.cs"  "$(ProjectDir)Properties\AssemblyInfo.tmpl.cs" "$(ProjectDir)Properties\AssemblyInfo.cs"</PreBuildEvent>
+  </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
