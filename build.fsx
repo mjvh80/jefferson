@@ -103,7 +103,7 @@ Target "Default" <| (fun _ -> trace "Default Target")
    ==> "BuildFileProc"
 
 "BuildJeffBuild"
-   ==> "BuildFileProc"
+   ==> "BuildCore"
 
 "Default"
    ==> "BuildTests"

@@ -156,7 +156,7 @@ namespace Jefferson.FileProcessing
          {
             return File.ReadAllText(file, encoding);
          }
-         catch(Exception e)
+         catch (Exception e)
          {
             throw new IOException("Could not read file " + file, e);
          }
@@ -172,6 +172,8 @@ namespace Jefferson.FileProcessing
       /// <returns></returns>
       public String Replace(String source, Boolean deep = true)
       {
+         if (String.IsNullOrEmpty(source)) return "";
+
          var jefferson = new TemplateParser();
          jefferson.ValueFilter = (name, value) =>
          {
@@ -205,7 +207,7 @@ namespace Jefferson.FileProcessing
       /// variables. Note that this evaluation/replacement is dynamic, and is performed every time by default (unless const is true). This means that the expression may provide
       /// different values or replacement results depending on when it is run.
       /// </param>
-      public void Add(String key, String valueExpr, Boolean isExpr = false, Boolean except = false, Boolean @readonly = false) 
+      public void Add(String key, String valueExpr, Boolean isExpr = false, Boolean except = false, Boolean @readonly = false)
       {
          if (key == null) throw new ArgumentNullException("key");
          if (key.Contains(".")) throw Error("VarReplacer key should not contain a period (.): " + key);
