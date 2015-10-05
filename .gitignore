@@ -1,8 +1,11 @@
 ﻿# NuGet packages.
 packages/
+build/nuget/Jefferson.**
 
 **/Debug/
 **/Release/
 
 *.suo
 *.user
+
+build/temp/
