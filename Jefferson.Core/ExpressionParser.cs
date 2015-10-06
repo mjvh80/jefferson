@@ -358,7 +358,7 @@ namespace Jefferson
                if (i == expr.Length - 2) i = expr.Length;
                else
                {
-                  i = Math.Min(expr.IndexOf('\n', i + 2), expr.IndexOf('\r', i + 2));
+                  i = Utils.MinNonNeg(expr.IndexOf('\n', i + 2), expr.IndexOf('\r', i + 2));
                   if (i < 0) i = expr.Length;
                   else i += 1;
                }
