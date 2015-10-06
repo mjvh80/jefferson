@@ -1,6 +1,7 @@
 Jefferson <img src="logo.png" width="48" height="48"></img> 
 ===========================================================
 [<img src="http://img.shields.io/nuget/v/Jefferson.svg"></img>](https://www.nuget.org/packages/Jefferson/)
+[<img src="http://foobar.aquabrowser.com/app/rest/builds/buildType:(id:Jefferson_Build)/statusIcon"></img>](http://foobar.aquabrowser.com/viewType.html?buildTypeId=Jefferson_Build&guest=1)
 
 Jefferson is a tiny little "variable replacer" or more often called a "template engine".
 
