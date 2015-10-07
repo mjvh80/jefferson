@@ -85,8 +85,14 @@ namespace Jefferson
 
       public static Func<Expression, Expression> GetConverter(Expression from, Type to, Boolean? ignoreCase = null)
       {
+         return GetNullConverter(from, to) ?? GetConverter(from.Type, to, ignoreCase);
+      }
+
+      public static Func<Expression, Expression> GetNullConverter(Expression from, Type to)
+      {
          // Convert "null" to the right type.
-         if (from.Type == typeof(Object) && !to.IsValueType)
+         // Note we'll allow it to convert to a value type. That's particularly useful in scenarios like $$? UNDEFINED + 1 /$$
+         if (from.Type == typeof(Object)) // && !to.IsValueType)
          {
             // Note: the only time this constant expression exists in our tree is if we've added it seeing keyword "null".
             // At the time, however, we did not have information regarding type.
@@ -99,7 +105,12 @@ namespace Jefferson
                return e => Expression.Default(to);
          }
 
-         return GetConverter(from.Type, to, ignoreCase);
+         return null;
+      }
+
+      public static Func<Expression, Expression> GetNullConverterOrIdentity(Expression from, Type to) 
+      {
+         return GetNullConverter(from, to) ?? (e => e);
       }
 
       public static Expression ResolveMethod(String name, Expression target, params Expression[] @params)
@@ -187,6 +198,12 @@ namespace Jefferson
          if (e2.Type.IsEnum) e2 = Convert_EnumToUnderlying(e2);
 
          if (e1.Type == e2.Type) return f(e1, e2);
+
+         // todo: is this the right place to do this?
+         if (e1.IsNullConstant())
+            e1 = GetNullConverterOrIdentity(e1, e2.Type)(e1); // may still be null if e.g. e2 is null
+         if (e2.IsNullConstant())
+            e2 = GetNullConverterOrIdentity(e2, e1.Type)(e2); // note that e1 may have already been converted
 
          // One is not a value type thus not a number. Note we won't attempt to cast etc.
          if (!e1.IsNumeric() || !e2.IsNumeric()) return f(e1, e2);

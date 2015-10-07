@@ -46,7 +46,9 @@ namespace Jefferson.Extensions
       public static Boolean IsNullConstant(this Expression e)
       {
          var ex = e as ConstantExpression;
-         return ex != null && ex.Value == null;
+         if (ex != null) return ex.Value == null;
+         var def = e as DefaultExpression;
+         return def != null;
       }
 
       #endregion

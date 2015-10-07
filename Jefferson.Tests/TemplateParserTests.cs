@@ -408,6 +408,13 @@ $$/if$$", context));
       }
 
       [Fact]
+      public void Can_use_undefined_variables_as_value_types()
+      {
+         var result = new TemplateParser().Replace("Hi $$? SOMEONE + 7 $$", context);
+         Assert.Equal("Hi 7", result.Trim());
+      }
+
+      [Fact]
       public void Can_make_templates_readonly()
       {
          var parser = new TemplateParser(new DefineDirective(), new UndefDirective());
