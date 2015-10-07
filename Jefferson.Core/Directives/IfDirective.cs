@@ -8,6 +8,13 @@ namespace Jefferson.Directives
 {
    public sealed class IfDirective : IDirective
    {
+      private readonly Boolean _mAllowUnknownNames;
+
+      /// <summary>
+      /// Note if allowUnknownNames is false, the global option takes precedence currently.
+      /// </summary>
+      public IfDirective(Boolean allowUnknownNames = true) { _mAllowUnknownNames = allowUnknownNames; }
+
       public String Name
       {
          get { return "if"; }
@@ -29,6 +36,9 @@ namespace Jefferson.Directives
          var contextParamAsObj = Expression.Convert(parserCtx.GetNthContext(0), typeof(Object));
 
          var endIfIdx = -1;
+
+         var oldOverride = parserCtx.OverrideAllowUnknownNames;
+         if (_mAllowUnknownNames) parserCtx.OverrideAllowUnknownNames = true;
 
          // A list of predicate, body pairs.
          var ifStmt = new List<Tuple<Expression, Expression>>();
@@ -84,7 +94,9 @@ namespace Jefferson.Directives
                   throw new InvalidOperationException();
             }
          }
+
       EndIf:
+         parserCtx.OverrideAllowUnknownNames = oldOverride;
          return _MakeIfExpression(ifStmt);
       }
 

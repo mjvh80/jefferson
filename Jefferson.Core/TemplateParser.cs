@@ -219,6 +219,8 @@ namespace Jefferson
          internal Func<String, Object, Object> UserProvidedValueFilter;
          internal Func<String, String> UserProvidedOutputFilter;
 
+         public Boolean? OverrideAllowUnknownNames { get; set; }
+
          public TemplateOptions Options { get; internal set; }
 
          /// <summary>
@@ -433,14 +435,19 @@ namespace Jefferson
                      throw SyntaxError(idx, "Found $$ but could not find matching end.");
 
                   expression = source.Substring(idx + 2, closeIdx - idx - 2);
+                  var allowUnknownNames = expression.Length > 0 && expression[0] == '?';
+                  if (allowUnknownNames) expression = expression.Substring(1);
+
                   prevIdx = closeIdx + 2;
 
                   if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Emitting value of expression $${0}$$", expression));
-               }
 
-               if (expression != null)
-               {
+                  var oldOverride = this.OverrideAllowUnknownNames;
+                  if (allowUnknownNames) this.OverrideAllowUnknownNames = allowUnknownNames;
+
                   var compExpr = CompileExpression<Object>(expression).Ast;
+
+                  this.OverrideAllowUnknownNames = oldOverride;
 
                   // Convert the object result to string. Todo: add a Write(Object) method instead?
                   bodyStmts.Add(Expression.Call(outputParam, Utils.GetMethod<IOutputWriter>(sb => sb.Write(null)),
@@ -653,7 +660,12 @@ namespace Jefferson
                if (startIndex == ContextTypes.Count) break;
             }
 
-            return defaultResolver(thisExpr, name, typeName, null);
+            var allowUnknownNames = OverrideAllowUnknownNames ?? Options.AllowUnknownNames;
+
+            var result = defaultResolver(thisExpr, name, typeName, null);
+            if (result == null && allowUnknownNames)
+               return Expression.Default(typeof(Object));
+            return result;
          }
 
          /// <summary>

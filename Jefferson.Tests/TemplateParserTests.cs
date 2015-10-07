@@ -9,6 +9,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using Xunit;
+using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
@@ -323,7 +324,6 @@ $$/if$$", context));
       [Fact]
       public void Can_handle_bad_expressions()
       {
-         // Unknown names resolve to empty strings.
          try
          {
             replacer.Replace("$$FOOOOBAAAARRR$$", context);
@@ -337,6 +337,14 @@ $$/if$$", context));
 1: FOOOOBAAAARRR
                 ^ (14)", e.Message);
          }
+      }
+
+      [Theory]
+      [InlineData("$$ ?FOOBAR$$", "Expected identifier")]
+      public void Can_handle_bad_syntax(String badInput, String expectedErrorPart)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser().Replace(badInput, context));
+         Assert.Contains(expectedErrorPart, error.Message);
       }
 
       public class CustomVarContext : TestContext
@@ -367,6 +375,36 @@ $$/if$$", context));
          {
             // OK
          }
+      }
+
+      [Fact]
+      public void By_default_undefined_names_give_an_error()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser().Replace("$$ IDONTEXIST $$", context));
+         Assert.Contains("Expected known name", error.Message);
+      }
+
+      [Fact]
+      public void Can_allow_undefined_names()
+      {
+         var options = new TemplateOptions { AllowUnknownNames = true };
+         var result = new TemplateParser(options).Replace("Hi $$SOMEONE$$", context);
+         Assert.Equal("Hi", result.Trim());
+      }
+
+      [Fact]
+      public void Can_allow_undefined_names_in_expressions()
+      {
+         var result = new TemplateParser().Replace("Hi $$? SOMEONE $$", context);
+         Assert.Equal("Hi", result.Trim());
+      }
+
+      [Fact]
+      public void Can_allow_undefined_names_in_expressions_even_when_this_is_the_default()
+      {
+         var options = new TemplateOptions { AllowUnknownNames = true };
+         var result = new TemplateParser(options).Replace("Hi $$? SOMEONE $$", context);
+         Assert.Equal("Hi", result.Trim());
       }
 
       [Fact]

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Jefferson.Directives;
+using System;
 using Xunit;
 using Xunit.Extensions;
 
@@ -41,6 +42,28 @@ namespace Jefferson.Tests
          Assert.Equal("Foo is the new ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif (b1)$$ ELIF $$#else$$ ELSE $$/if$$!", context));
          Assert.Equal("Foo is the new  NESTED  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if b1$$ NESTED $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
          Assert.Equal("Foo is the new  NESTED2  ELIF !", replacer.Replace("Foo is the new$$#if !b1$$ IF $$#elif b1$$ $$#if !b1$$ HAHA $$#else$$ NESTED2 $$/if$$ ELIF $$#else$$ ELSE $$/if$$!", context));
+      }
+
+      [Fact]
+      public void If_directive_allows_unknown_names_by_default()
+      {
+         Assert.Equal("Foo is blah", replacer.Replace("Foo is$$#if FOO_DONT_EXIST$$ xxx $$#else$$ blah$$/if$$", context).Trim());
+      }
+
+      [Fact]
+      public void Can_make_if_directive_sensitive_to_unknown_names()
+      {
+         var p = new TemplateParser(new IfDirective(allowUnknownNames: false));
+         var error = Assert.Throws<SyntaxException>(() => p.Replace("$$#if FOO_DONT_EXIST $$ blah $$/if$$", context));
+         Assert.Contains("Expected known name", error.Message);
+      }
+
+      [Fact]
+      public void If_directive_ignores_unknown_names_if_that_is_global_default()
+      {
+         var p = new TemplateParser(new TemplateOptions { AllowUnknownNames = true }, new IfDirective(allowUnknownNames: false));
+         var result = p.Replace("$$#if FOO_UNKONW$$ xx $$#else$$ yy $$/if$$", context);
+         Assert.Equal("yy", result.Trim());
       }
 
       [Theory]

@@ -91,7 +91,11 @@ namespace Jefferson
             // Note: the only time this constant expression exists in our tree is if we've added it seeing keyword "null".
             // At the time, however, we did not have information regarding type.
             var @const = from as ConstantExpression;
-            if (@const.Value == null)
+            if (@const != null && @const.Value == null)
+               return e => Expression.Default(to);
+
+            var @default = from as DefaultExpression;
+            if (@default != null)
                return e => Expression.Default(to);
          }
 

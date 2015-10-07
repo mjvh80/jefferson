@@ -146,8 +146,17 @@ namespace Jefferson.Directives
                if (haveSource)
                   throw parserContext.SyntaxError(startIdx, "#define directive is not empty, unexpected '='");
 
-               var value = binding.Substring(eqIdx + 1).Trim();
-               compiledVars.Add(name, parserContext.CompileExpression<Object>(value));
+               // Look for =?. Note that = ? should not work.
+               var value = binding.Substring(eqIdx + 1);
+               var allowUnknownNames = value.Length > 0 && value[0] == '?';
+
+               if (allowUnknownNames) value = value.Substring(1);
+               var oldOverride = parserContext.OverrideAllowUnknownNames;
+               if (allowUnknownNames) parserContext.OverrideAllowUnknownNames = allowUnknownNames;
+
+               compiledVars.Add(name, parserContext.CompileExpression<Object>(value.Trim()));
+
+               parserContext.OverrideAllowUnknownNames = oldOverride;
             }
             else
             {

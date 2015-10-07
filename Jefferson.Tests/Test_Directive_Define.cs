@@ -43,6 +43,17 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Define_can_allow_unknown_names_in_definition()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define x =? FOO_DONT_EXIST /$$
+         x=$$x$$
+         ", context);
+
+         Assert.Equal("x=", result.Trim());
+      }
+
+      [Fact]
       public void Define_directive_within_let_directive_does_not_work_if_same_name()
       {
          try
