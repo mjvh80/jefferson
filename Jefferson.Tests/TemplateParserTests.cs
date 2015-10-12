@@ -278,7 +278,7 @@ x".Trim(), result.Trim());
          var error = getError(() => replacer.Replace(
 @"Line 1
 Line 2
-$$#if true#$$
+$$#if true$$
 Line 4
   $$#if false$$
     Line 6

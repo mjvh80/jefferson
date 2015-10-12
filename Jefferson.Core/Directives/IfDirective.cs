@@ -37,9 +37,6 @@ namespace Jefferson.Directives
 
          var endIfIdx = -1;
 
-         var oldOverride = parserCtx.OverrideAllowUnknownNames;
-         if (_mAllowUnknownNames) parserCtx.OverrideAllowUnknownNames = true;
-
          // A list of predicate, body pairs.
          var ifStmt = new List<Tuple<Expression, Expression>>();
 
@@ -63,10 +60,17 @@ namespace Jefferson.Directives
             endIfIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else$$", "$$#elif ");
             if (endIfIdx < 0) endIfIdx = source.Length;
 
+            var oldOverride = parserCtx.OverrideAllowUnknownNames;
+            if (_mAllowUnknownNames) parserCtx.OverrideAllowUnknownNames = true;
+
+            var compiledPredicate = parserCtx.CompileExpression<Boolean>(expr);
+
+            parserCtx.OverrideAllowUnknownNames = oldOverride;
+
             var contents = source.Substring(closeIdx, endIfIdx - closeIdx);
             var compiledContents = parserCtx.Parse<Object>(contents);
 
-            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(parserCtx.CompileExpression<Boolean>(expr).Ast, contextParamAsObj),
+            ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(compiledPredicate.Ast, contextParamAsObj),
                                                             Expression.Invoke(compiledContents, contextParamAsObj, parserCtx.Output)));
 
             if (endIfIdx == source.Length)
@@ -96,7 +100,6 @@ namespace Jefferson.Directives
          }
 
       EndIf:
-         parserCtx.OverrideAllowUnknownNames = oldOverride;
          return _MakeIfExpression(ifStmt);
       }
 

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Xml;
 
@@ -71,6 +72,15 @@ namespace Jefferson.FileProcessing
 
          using (var client = new WebClient())
             return client.DownloadString(url);
+      }
+
+      public String MessageBox(String msg)
+      {
+         var asm = Assembly.Load("System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089");
+         var type = asm.GetType("System.Windows.Forms.MessageBox");
+         var method = type.GetMethod("Show", BindingFlags.Static | BindingFlags.Public | BindingFlags.InvokeMethod, null, new[] { typeof(String) }, null);
+         method.Invoke(null, new[] { msg });
+         return "";
       }
 
       public String PID

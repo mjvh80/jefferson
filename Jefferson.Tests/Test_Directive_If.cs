@@ -59,6 +59,13 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void If_does_not_allow_unknown_names_in_body_by_default()
+      {
+         var error = Assert.Throws<SyntaxException>(() => replacer.Replace("Foo is$$#if true$$ x = $$IDONTEXIST$$ $$#else$$ blah$$/if$$", context).Trim());
+         Assert.Contains("Expected known name", error.Message);
+      }
+
+      [Fact]
       public void If_directive_ignores_unknown_names_if_that_is_global_default()
       {
          var p = new TemplateParser(new TemplateOptions { AllowUnknownNames = true }, new IfDirective(allowUnknownNames: false));
