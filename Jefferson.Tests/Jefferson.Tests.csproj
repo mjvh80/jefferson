@@ -53,6 +53,7 @@
     <Compile Include="SyntaxTests.cs" />
     <Compile Include="TemplateParserTests.cs" />
     <Compile Include="TestUtils.cs" />
+    <Compile Include="Test_Directive_Pragma.cs" />
     <Compile Include="Test_Directive_Block.cs" />
     <Compile Include="Test_Directive_Define.cs" />
     <Compile Include="Test_Directive_Each.cs" />

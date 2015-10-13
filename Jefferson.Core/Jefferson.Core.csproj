@@ -137,6 +137,7 @@
     <Compile Include="Directives\IfDirective.cs" />
     <Compile Include="Directives\LetDirective.cs" />
     <Compile Include="Directives\LiteralDirective.cs" />
+    <Compile Include="Directives\PragmaDirective.cs" />
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />

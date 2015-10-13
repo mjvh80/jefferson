@@ -37,7 +37,7 @@ namespace Jefferson
    {
       private static IDirective[] _GetDefaultDirectives()
       {
-         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective() };
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new PragmaDirective() };
       }
 
       /// <summary>
@@ -113,7 +113,7 @@ namespace Jefferson
 
          if (contextType == null) contextType = typeof(TContext);
 
-         var ctx = new TemplateParserContext(source)
+         var ctx = new TemplateParserContext(this, source)
          {
             ContextTypes = new List<Type> { contextType },
             ContextDeclarations = new List<IVariableBinder> { decls },
@@ -175,7 +175,7 @@ namespace Jefferson
          Contract.Requires(expr != null);
          Contract.Requires(context != null);
 
-         var ctx = new TemplateParserContext("")
+         var ctx = new TemplateParserContext(this, "")
          {
             ContextTypes = new List<Type> { context.GetType() },
             ContextDeclarations = new List<IVariableBinder> { context as IVariableBinder },
@@ -187,11 +187,36 @@ namespace Jefferson
          return ctx.EvaluateExpression<Object, Object>(expr, context);
       }
 
+      public event Action<Object, PragmaEventArgs> PragmaSeen;
+
+      internal void OnPragmaSeen(TemplateParserContext context, String arguments)
+      {
+         if (PragmaSeen != null)
+            PragmaSeen(this, new PragmaEventArgs(context, arguments));
+      }
+
       public Func<String, Object, Object> ValueFilter { get; set; }
 
       // todo: is this useful? Perhaps for standard output encoding?
       // > trimming?
       private Func<String, String> OutputFilter { get; set; }
+   }
+
+   public sealed class PragmaEventArgs : EventArgs
+   {
+      public readonly TemplateParserContext ParserContext;
+      public readonly String Arguments;
+
+      // todo: location?
+
+      public PragmaEventArgs(TemplateParserContext context, String args)
+      {
+         Contract.Requires(context != null);
+         Contract.Requires(!String.IsNullOrEmpty(args));
+
+         ParserContext = context;
+         Arguments = args;
+      }
    }
 
    namespace Parsing
@@ -201,13 +226,14 @@ namespace Jefferson
       /// </summary>
       public class TemplateParserContext
       {
-         internal TemplateParserContext(String source)
+         internal TemplateParserContext(TemplateParser parser, String source)
          {
             Contract.Requires(source != null);
 
             Source = source;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
             PositionOffsets = new Stack<Int32>();
+            Parser = parser;
          }
 
          internal Dictionary<String, IDirective> DirectiveMap;
@@ -222,6 +248,8 @@ namespace Jefferson
          public Boolean? OverrideAllowUnknownNames { get; set; }
 
          public TemplateOptions Options { get; internal set; }
+
+         public readonly TemplateParser Parser;
 
          /// <summary>
          /// Represents the runtime List&lt;Object&gt;, the stack of current contexts (or scopes).
@@ -420,7 +448,7 @@ namespace Jefferson
 
                   var directiveSource = isEmpty ? null : source.Substring(dirBodyStartIdx, directiveEndIdx - dirBodyStartIdx);
 
-                  bodyStmts.Add(directive.Compile(this, arguments: source.Substring(dirNameEndIdx, dirBodyStartIdx - dirNameEndIdx - (isEmpty ? 3 : 2)),
+                  bodyStmts.Add(directive.Compile(this, arguments: source.Substring(dirNameEndIdx, dirBodyStartIdx - dirNameEndIdx - (isEmpty ? 3 : 2)).Trim(),
                                                         source: directiveSource));
 
                   PositionOffsets.Pop();

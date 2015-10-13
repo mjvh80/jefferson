@@ -108,5 +108,28 @@ namespace Jefferson.Tests
          // Defined in the template.
          Assert.Equal("foobar", d.foo);
       }
+
+      [Fact]
+      public void Pragma_dontprocess_works()
+      {
+         var p = new SimpleFileProcessor<TestContext>(new TestContext());
+
+         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Directory.CreateDirectory(tempDir);
+
+         var parent = Path.Combine(tempDir, "parent.txt");
+         File.WriteAllText(parent, @"
+         $$#pragma dontprocess /$$
+         $$# dodgy $$$ $$
+         ");
+
+         var h = FileHierarchy.FromDirectory(tempDir);
+         p.ProcessFileHierarchy(h);
+
+         var result = File.ReadAllText(h.Files.First().TargetFullPath);
+
+         Assert.Contains("#pragma", result);
+         Assert.Contains("$$# dodgy", result);
+      }
    }
 }

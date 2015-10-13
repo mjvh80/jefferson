@@ -25,12 +25,31 @@ namespace Jefferson.FileProcessing
 
          mContext = context;
          mContext.Processor = (TSelf)this;
-         mTemplateParser = new Jefferson.TemplateParser();
+         mTemplateParser = BuildTemplateParser();
       }
 
       public TContext Context { get { return mContext; } }
 
       public abstract TSelf CreateChildScope();
+
+      protected virtual TemplateParser BuildTemplateParser()
+      {
+         var jefferson = new TemplateParser();
+
+         jefferson.ValueFilter = (name, value) =>
+         {
+            Log("Variable '{0}' resolved to: {1}", name, value);
+            return value;
+         };
+
+         jefferson.PragmaSeen += (_, args) =>
+         {
+            if (args.Arguments.Equals("dontprocess", StringComparison.OrdinalIgnoreCase))
+               throw new DontProcessException();
+         };
+
+         return jefferson;
+      }
 
       protected virtual void Log(String msg, params Object[] args)
       {
@@ -174,19 +193,21 @@ namespace Jefferson.FileProcessing
       {
          if (String.IsNullOrEmpty(source)) return "";
 
-         var jefferson = new TemplateParser();
-         jefferson.ValueFilter = (name, value) =>
-         {
-            Log("Variable '{0}' resolved to: {1}", name, value);
-            return value;
-         };
-
          try
          {
-            if (deep)
-               return jefferson.ReplaceDeep(source, mContext);
-            else
-               return jefferson.Replace(source, mContext);
+            try
+            {
+               if (deep)
+                  return mTemplateParser.ReplaceDeep(source, mContext);
+               else
+                  return mTemplateParser.Replace(source, mContext);
+            }
+            catch (SyntaxException e)
+            {
+               if (e.InnerException != null && e.InnerException is DontProcessException)
+                  return source;
+               throw;
+            }
          }
          catch (Exception e)
          {
