@@ -53,6 +53,10 @@ We use this in configuration files for things like
 
 As output is abstracted through an `IOutputWriter` (and one that implements this using a `TextWriter` is provided) it is very easy to use this to output, say, directly to an HTTP output stream.
 
+## Documentation
+
+See the <a href="https://github.com/mjvh80/jefferson/wiki">wiki</a>.
+
 ## Project Overview
 * `Jefferson.Core` implements the core expression and replacement logic
 * `Jefferson.Build` provides some services for using Jefferson during build (needs documentation)
@@ -68,10 +72,6 @@ As output is abstracted through an `IOutputWriter` (and one that implements this
 * errors are descriptive, helpful and provide accurate source location information
 * the focus is runtime performance not compile performance
 
-## Documentation
-
-See the <a href="https://github.com/mjvh80/jefferson/wiki">wiki</a>.
-
 FAQ
 ===
 
@@ -86,6 +86,9 @@ No. This is just an initial version and the API may change. In particular the ar
 
 #### Is it type safe?
 Yes in the sense that values are typed and ultimately converted to string before emission to output.
+
+### Is there documentation?
+Yes, see the <a href="https://github.com/mjvh80/jefferson/wiki">wiki</a>. There is some documentation in code and this will be improved over time.
 
 #### What's with all the `$$`
 The `$$` was initially chosen as it conflicts least with existing file formats, in our use case. I don't think other syntaxes like `{{...}}` are necessarily any better.
