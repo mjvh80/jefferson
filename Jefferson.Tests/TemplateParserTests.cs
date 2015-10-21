@@ -252,7 +252,7 @@ x".Trim(), result.Trim());
 
          error = getError(() => replacer.Replace("If no end: $$#if $$ foobar $$if$$ blah.", context));
          Assert.Equal(
-@"Failed to find directive end '$$/if$$' for directive 'if'.
+@"Failed to find directive end '$$/if' for directive 'if'.
 
 1: If no end: $$#if $$ foobar $$if$$ blah.
               ^ (12)", error);

@@ -130,7 +130,7 @@
     <Compile Include="Binders\ReadOnlyBinder.cs" />
     <Compile Include="Directives\BlockDirective.cs" />
     <Compile Include="Directives\CommentDirective.cs" />
-    <Compile Include="Directives\DefineAndUndefDirectives.cs" />
+    <Compile Include="Directives\DefineDirective.cs" />
     <Compile Include="Directives\DirectiveContract.cs" />
     <Compile Include="Directives\EachDirective.cs" />
     <Compile Include="Directives\IDirective.cs" />
@@ -138,10 +138,12 @@
     <Compile Include="Directives\LetDirective.cs" />
     <Compile Include="Directives\LiteralDirective.cs" />
     <Compile Include="Directives\PragmaDirective.cs" />
+    <Compile Include="Directives\UndefDirective.cs" />
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />
     <None Include="Properties\AssemblyInfo.tmpl.cs" />
+    <Compile Include="ParserUtils.cs" />
     <Compile Include="TemplateOptions.cs" />
     <Compile Include="Output\IOutputWriter.cs" />
     <Compile Include="IVariableBinder.cs" />

@@ -74,7 +74,7 @@ $$/let$$
          // FieldOnCtx
          var result = new TemplateParser(new LetDirective()).Replace(@"
             $$FieldOnCtx$$
-            $$#let FieldOnCtx = 'blah'$$i
+            $$#let FieldOnCtx = 'blah'$$
                $$FieldOnCtx$$
             $$/let$$", context);
 
@@ -119,15 +119,15 @@ $$/let$$
       }
 
       [Theory]
-      [InlineData("$$#let a= 'book'/$$", "Directive may not be empty")]
-      [InlineData("$$#let a = 'boo'//$$", "Directive may not be empty")]
-      [InlineData("$$#let   $$   $$/let$$", "No variable bindings found")]
-      [InlineData("$$#let$$$$/let$$", "No variable bindings")]
-      [InlineData("$$#let$$ $$/let$$", "No variable bindings")]
-      [InlineData("$$#let $$$$/let$$", "No variable bindings")]
+      [InlineData("$$#let a= 'book'/$$", "Missing body")]
+      [InlineData("$$#let a = 'boo'//$$", "Missing body")]
+      [InlineData("$$#let   $$   $$/let$$", "Expected a name to bind to something")]
+      [InlineData("$$#let$$$$/let$$", "Expected a name to bind to something")]
+      [InlineData("$$#let$$ $$/let$$", "Expected a name to bind to something")]
+      [InlineData("$$#let $$$$/let$$", "Expected a name to bind to something")]
       [InlineData("$$#let a='b'$$", "Failed to find directive end")]
       [InlineData("$$#let 1a='b'$$$$/let$$", "Variable '1a' has an invalid name")]
-      [InlineData("$$#let b=1; a$$ $$/let$$", "missing '='")]
+      [InlineData("$$#let b=1; a$$ $$/let$$", "Expected end of directive argument input")] // todo this error is crap
       [InlineData("$$#let a$$ $$/let$$", "Missing $$#out$$")]
       public void Let_bad_syntax_facts(String input, String errorPart)
       {
@@ -145,7 +145,7 @@ $$/let$$
       [Fact]
       public void Let_bound_names_can_be_case_managed()
       {
-         // By default case insensitive.
+         // By default case sensitive.
 
          var result = replacer.Replace("$$#let a = 'hi'$$ $$A$$ $$/let$$", context);
          Assert.Equal("hi", result.Trim());

@@ -16,6 +16,29 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Internal_define_can_have_out()
+      {
+         var result = new TemplateParser(new DefineDirective("define", "out", allowOut: true, requireOut: true)).Replace(@"
+
+            $$#define foo = 'bar'$$
+               output!
+            $$/define$$
+
+            $$#define qux$$
+               blah blah
+            $$#out$$
+               $$qux$$
+            $$/define$$
+
+            $$foo$$
+         ", context);
+
+         Assert.Contains("bar", result.Trim());
+         Assert.Contains("output!", result.Trim());
+         Assert.Contains("blah blah", result.Trim());
+      }
+
+      [Fact]
       public void Define_directive_works()
       {
          var result = new TemplateParser(new DefineDirective()).Replace(@"
@@ -26,6 +49,19 @@ namespace Jefferson.Tests
          ", context);
 
          Assert.Equal("bar", result.Trim());
+      }
+
+      [Fact]
+      public void Define_syntax_test()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+
+            $$#define foo = 'bar; bar = test'; bar = 'qux' /$$
+
+            $$foo$$
+         ", context);
+
+         Assert.Contains("bar = test", result);
       }
 
       [Fact]
@@ -501,18 +537,19 @@ namespace Jefferson.Tests
       [InlineData("$$#define a=1$$  $$/define$$", "directive is not empty, unexpected '='")]
       [InlineData("$$#define a(b) = 'f'$$$$/define$$", "Unexpected #define body")]
       [InlineData("$$#define a(blah b) = 'f' /$$", "Could not resolve parameter type")]
-      [InlineData("$$#define a;b='1'$$ $$/define$$", "Unexpected ';'")]
+      [InlineData("$$#define a;b='1'$$ $$/define$$", "Variable 'a;b' has an invalid name.")] // todo could do better?
       [InlineData(@"
       $$#define foo(bar)$$
         $$#define bar = 'bar' /$$
       $$/define$$
-      ", "Cannot set variable 'bar' because it has been bound to a define parameter.")]
+      ", "Cannot set variable 'bar' because it has been bound to a parameter.")]
       [InlineData(@"
       $$#define foo(bar)$$
         $$#undef bar /$$
       $$/define$$
-      ", "Cannot unset variable 'bar' because it has been bound to a define parameter.")]
+      ", "Cannot unset variable 'bar' because it has been bound to a parameter.")]
       [InlineData("$$#define a( = 'foo' /$$", "Missing ')'")]
+      [InlineData("$$#define a = 'b'; b /$$", "Expected end of directive argument input")]
       public void Detect_bad_define_syntax_2(String input, String expectedErrorPart)
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective(), new UndefDirective()).Replace(input, context));
@@ -523,7 +560,17 @@ namespace Jefferson.Tests
       public void Can_have_unnecessary_semicolons()
       {
          var result = new TemplateParser(new DefineDirective()).Replace(@"
-         $$#define ;;;x=1;;y=2; /$$
+         $$#define x=1;;y=2; /$$
+         $$ x + y - 1$$
+         ", context);
+         Assert.Equal("2", result.Trim());
+      }
+
+      [Fact]
+      public void Semicolons_are_optional()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define x = 1 y = 2 /$$
          $$ x + y - 1$$
          ", context);
          Assert.Equal("2", result.Trim());
@@ -547,6 +594,23 @@ namespace Jefferson.Tests
                                   "double",
                                   "object" })
             new TemplateParser(new DefineDirective()).Replace("$$#define foo(" + t + " x) = 'bar' /$$", context);
+      }
+
+      [Fact]
+      public void Can_have_any_whitespace_after_type()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define int
+               x( 
+                    string 
+         y 
+            ) = 1 /$$
+
+         $$x(2)$$
+
+         ", context);
+
+         Assert.Equal("1", result.Trim());
       }
 
       // Not sure if this case should be disallowed...

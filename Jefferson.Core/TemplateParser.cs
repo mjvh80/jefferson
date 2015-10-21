@@ -346,6 +346,8 @@ namespace Jefferson
                                       ContextTypes[idx]);
          }
 
+         #region Error Support
+
          /// <summary>
          /// Throws a <see cref="SyntaxException"/> by also translating the position to the global source.
          /// </summary>
@@ -358,6 +360,8 @@ namespace Jefferson
          {
             return SyntaxException.Create(inner, Source, GetPosition(relativeIdx), msg, args);
          }
+
+         #endregion
 
          /// <summary>
          /// Beef.
@@ -429,16 +433,23 @@ namespace Jefferson
                    * Otherwise we'd need to ask directives if they are empty based on their arguments.
                    * I also think it is more clear from source that there's no end to be expected. */
                   var isEmpty = source[dirBodyStartIdx - 3] == '/';
-                  if (isEmpty && !directive.MayBeEmpty)
-                     throw SyntaxError(dirBodyStartIdx - 3, "Directive may not be empty.");
 
-                  var directiveEnd = isEmpty ? "/$$" : "$$/" + directiveName + "$$";
+                  var directiveEnd = isEmpty ? "/$$" : "$$/" + directiveName;
                   var directiveEndIdx = isEmpty ? dirBodyStartIdx - directiveEnd.Length : FindDirectiveEnd(source, dirNameEndIdx, directive is LiteralDirective, directiveEnd);
                   if (directiveEndIdx < 0) throw SyntaxError(idx, "Failed to find directive end '{0}' for directive '{1}'.", directiveEnd, directiveName);
                   if (!isEmpty && dirBodyStartIdx > directiveEndIdx) throw SyntaxError(idx, "Could not find end of directive.");
 
                   // Mark where to continue parsing.
                   prevIdx = directiveEndIdx + directiveEnd.Length;
+                  if (!isEmpty)
+                  {
+                     prevIdx = source.IndexOf("$$", directiveEndIdx + directiveEnd.Length);
+                     if (prevIdx < 0) throw SyntaxError(directiveEndIdx, "Missing '$$' directive end.");
+                     var endPart = source.Substring(directiveEndIdx + directiveEnd.Length, prevIdx - directiveEndIdx - directiveEnd.Length);
+                     if (endPart.Length > 0 && !String.IsNullOrWhiteSpace(endPart)) // todo avoid substring
+                        throw SyntaxError(directiveEndIdx + directiveEnd.Length, "Invalid characters found, expected only possible whitespace.");
+                     prevIdx += 2;
+                  }
 
                   if (Options.EnableTracing) bodyStmts.Add(Utils.GetSimpleTraceExpr("Compiling directive #" + directiveName));
 
@@ -463,7 +474,7 @@ namespace Jefferson
                      throw SyntaxError(idx, "Found $$ but could not find matching end.");
 
                   expression = source.Substring(idx + 2, closeIdx - idx - 2);
-                  var allowUnknownNames = expression.Length > 0 && expression[0] == '?';
+                  var allowUnknownNames = expression.At(0) == '?';
                   if (allowUnknownNames) expression = expression.Substring(1);
 
                   prevIdx = closeIdx + 2;
@@ -545,15 +556,15 @@ namespace Jefferson
                   var nestedDirective = source.Substring(nestedStartIdx + "$$#".Length, len);
                   var nestedEmptyIdx = source.IndexOf("/$$", nestedStartIdx + "$$#".Length);
                   if (source.IndexOf("$$", nestedStartIdx + "$$#".Length) < nestedEmptyIdx) nestedEmptyIdx = -1;
-                  nestedDirective = "$$/" + nestedDirective + "$$";
+                  nestedDirective = "$$/" + nestedDirective;
 
                   nestedAfterEndIdx = nestedEmptyIdx >= 0 ? nestedEmptyIdx : FindDirectiveEnd(source, nextStart + 2, false, nestedDirective);
                   if (nestedAfterEndIdx >= 0)
                      nestedAfterEndIdx += nestedEmptyIdx >= 0 ? "/$$".Length : nestedDirective.Length;
                }
 
-            // Find the first terminator.
-            var endIdx = Utils.MinNonNeg(terminators.Select(t => source.IndexOf(t, start)));
+            // Find the first terminator. It should be suffixed with either $ or whitespace.
+            var endIdx = Utils.MinNonNeg(terminators.Select(t => t.TrimEnd('$')).Select(t => source.IndexOfExpr(Regex.Escape(t) + @"(\s+|\$)", start)));
 
             if (nestedStartIdx < 0) return endIdx; // no nested directive
             if (endIdx < 0) return endIdx; // error: not found
@@ -572,6 +583,17 @@ namespace Jefferson
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
          {
+            var ignore = 0;
+            return _CompileExpression<TOutput>(expr, 0, 0, out ignore);
+         }
+
+         public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr, Int32 startAt, out Int32 stoppedAt)
+         {
+            return _CompileExpression<TOutput>(expr, ExpressionParsingFlags.AllowEarlyStop, startAt, out stoppedAt);
+         }
+
+         private CompiledExpression<Object, TOutput> _CompileExpression<TOutput>(String expr, ExpressionParsingFlags flags, Int32 startAt, out Int32 stoppedAt)
+         {
             Contract.Requires(expr != null);
             Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
 
@@ -579,7 +601,7 @@ namespace Jefferson
 
             // Parse the expression, compile it and run it.
 
-            var flags = ExpressionParsingFlags.EmptyExpressionIsEmptyString; // this allows $$$$ in source (useful for things like $$//...$$)
+            flags |= ExpressionParsingFlags.EmptyExpressionIsEmptyString; // this allows $$$$ in source (useful for things like $$//...$$)
 
             if (this.Options.IgnoreCase)
                flags |= ExpressionParsingFlags.IgnoreCase;
@@ -587,7 +609,7 @@ namespace Jefferson
             if (this.Options.UseCurrentCulture)
                flags |= ExpressionParsingFlags.UseCurrentCulture;
 
-            return parser._ParseExpressionInternal(expr, ResolveName, flags, this.CurrentContextType, this.UserProvidedValueFilter);
+            return parser._ParseExpressionInternal(expr, startAt, out stoppedAt, ResolveName, flags, this.CurrentContextType, this.UserProvidedValueFilter);
          }
 
          /// <summary>

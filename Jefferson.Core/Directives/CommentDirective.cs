@@ -12,14 +12,6 @@ namespace Jefferson.Directives
          }
       }
 
-      public override Boolean MayBeEmpty
-      {
-         get
-         {
-            return true;
-         }
-      }
-
       public override System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          return Utils.NopExpression;

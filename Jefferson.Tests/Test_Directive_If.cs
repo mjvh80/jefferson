@@ -66,6 +66,39 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Cannot_have_elif_after_else()
+      {
+         var error = Assert.Throws<SyntaxException>(() => replacer.Replace(@"
+         $$#if true$$
+
+         $$#else$$
+
+         $$#elif$$
+
+         $$/if$$
+         ", context));
+
+         // todo: error should be better perhaps
+         Assert.Contains("Could not find directive 'elif'", error.Message);
+      }
+
+      [Fact]
+      public void Can_have_arbitrary_space_in_if_expressions()
+      {
+         var result = replacer.Replace(@"
+         $$#if
+            true
+
+         $$
+
+         $$#elif
+               false  $$
+
+         $$/if$$
+         ", context);
+      }
+
+      [Fact]
       public void If_directive_ignores_unknown_names_if_that_is_global_default()
       {
          var p = new TemplateParser(new TemplateOptions { AllowUnknownNames = true }, new IfDirective(allowUnknownNames: false));

@@ -27,15 +27,9 @@ namespace Jefferson.Directives.Contracts
          }
       }
 
-      public Boolean MayBeEmpty
-      {
-         get { return false; }
-      }
-
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          Contract.Requires(parserContext != null);
-         Contract.Requires(MayBeEmpty || source != null);
          Contract.Ensures(Contract.Result<Expression>() != null);
          return null;
       }

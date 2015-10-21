@@ -25,16 +25,12 @@ namespace Jefferson.Directives
          get { return new[] { "else", "elif" }; }
       }
 
-      public Boolean MayBeEmpty
+      public Expression Compile(TemplateParserContext parserCtx, String arguments, String source)
       {
-         get { return false; }
-      }
+         if (source == null) throw parserCtx.SyntaxError(0, "#if directive may not be empty");
 
-      public Expression Compile(TemplateParserContext parserCtx, String args, String source)
-      {
          var idx = 0;
          var contextParamAsObj = Expression.Convert(parserCtx.GetNthContext(0), typeof(Object));
-
          var endIfIdx = -1;
 
          // A list of predicate, body pairs.
@@ -43,7 +39,7 @@ namespace Jefferson.Directives
          for (; ; )
          {
             // Here we're handling if or elif.
-            var expr = args;
+            var expr = arguments;
             var closeIdx = 0;
 
             if (idx > 0) // elif
@@ -57,7 +53,7 @@ namespace Jefferson.Directives
 
             if (String.IsNullOrEmpty(expr) || expr.Trim().Length == 0) throw parserCtx.SyntaxError(idx, "Empty expression in if or elif.");
 
-            endIfIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else$$", "$$#elif ");
+            endIfIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else", "$$#elif");
             if (endIfIdx < 0) endIfIdx = source.Length;
 
             var oldOverride = parserCtx.OverrideAllowUnknownNames;

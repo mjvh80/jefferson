@@ -201,7 +201,7 @@ $$#each Foobars /$$
 done
 ", context));
 
-         Assert.Contains("Directive may not be empty", error.Message);
+         Assert.Contains("may not be empty", error.Message);
       }
    }
 }

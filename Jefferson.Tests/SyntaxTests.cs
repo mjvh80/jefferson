@@ -77,6 +77,16 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void Closing_statement_may_contain_whitespace_but_nothing_else()
+      {
+         var p = new TemplateParser(new DefineDirective());
+         p.Replace("$$#define x$$ $$/define    $$", new TestContext());
+
+         var error = Assert.Throws<SyntaxException>(() => p.Replace("$$#define x$$ $$/define  junk  $$", new TestContext()));
+         Assert.Contains("Invalid characters found, expected only possible whitespace", error.Message);
+      }
+
+      [Fact]
       public void Can_handle_syntactic_edge_cases()
       {
          var p = new TemplateParser();

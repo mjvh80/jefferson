@@ -27,13 +27,10 @@ namespace Jefferson.Directives
          get { return new[] { "else" }; }
       }
 
-      public Boolean MayBeEmpty
+      public Expression Compile(TemplateParserContext parserCtx, String arguments, String source)
       {
-         get { return false; }
-      }
+         if (source == null) throw parserCtx.SyntaxError(0, "#each directive may not be empty");
 
-      public Expression Compile(TemplateParserContext parserCtx, String args, String source)
-      {
          var closeIdx = 0;
 
          var endIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else$$");
@@ -49,7 +46,7 @@ namespace Jefferson.Directives
             empty = source.Substring(ifClose, endIdx - ifClose);
          }
 
-         var compiledEachExpr = parserCtx.CompileExpression<IEnumerable<Object>>(args);
+         var compiledEachExpr = parserCtx.CompileExpression<IEnumerable<Object>>(arguments);
 
          // Compile else, but against the *current* context.
          var compiledEachEmpty = empty == null ? (Expression)Expression.Constant(null, typeof(Action<Object, IOutputWriter>)) : parserCtx.Parse<Object>(empty);

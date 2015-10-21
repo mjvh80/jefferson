@@ -29,13 +29,10 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
-      public Boolean MayBeEmpty
-      {
-         get { return false; }
-      }
-
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
+         if (source == null) throw parserContext.SyntaxError(0, "#block directive should not be empty"); // could allow nop?
+
          var currentContext = parserContext.GetNthContext(0);
          var currentContextAsObj = Expression.Convert(currentContext, typeof(Object));
          var binder = new _BlockScopeBinder()

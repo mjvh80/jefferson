@@ -64,7 +64,12 @@ namespace Jefferson
       /// <summary>
       /// If the expression is empty or whitespace or comments, treat it as the empty string.
       /// </summary>
-      EmptyExpressionIsEmptyString = 1 << 3
+      EmptyExpressionIsEmptyString = 1 << 3,
+
+      /// <summary>
+      /// If set, no error is thrown if end of input is not reached.
+      /// </summary>
+      AllowEarlyStop = 1 << 4,
    }
 
    public class CompiledExpression<TContext, TOutput>
@@ -271,6 +276,12 @@ namespace Jefferson
          };
       }
 
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
+      {
+         var ignore = 0;
+         return _ParseExpressionInternal(expr, 0, out ignore, nameResolver, flags, actualContextType, valueFilter);
+      }
+
       // Parses expressions.
       // operators are: >, >=, <=, ==, !=, && and ||              
       // Allows "and" instead of &&.
@@ -296,7 +307,7 @@ namespace Jefferson
       //             ( numberExpr ) |
       //             ( true ) | ( false ) | ( null ) |
       //             ( identifierExpr )
-      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, Int32 startAt, out Int32 stoppedAt, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
       {
          Contract.Requires(expr != null);
          Contract.Ensures(Contract.Result<CompiledExpression<TContext, TOutput>>() != null);
@@ -319,7 +330,8 @@ namespace Jefferson
          Func<Expression> expression = null, equalExpr = null, relExpr = null, multExpr = null, addExpr = null, unitExpr = null, unaryExpr = null, primaryExpr = null, condExpr = null, nullExpr = null, orExpr = null, andExpr = null, binAndExpr = null, binOrExpr = null, binExOrExpr = null, ifExpr = null;
 
          // Index in source over which we'll close.
-         Int32 i = 0;
+         Int32 i = startAt;
+         stoppedAt = startAt;
 
          var ignoreCase = flags.HasFlag(ExpressionParsingFlags.IgnoreCase);
 
@@ -968,8 +980,10 @@ namespace Jefferson
             // but we have inferred the *actual* type so return that too.
             var bodyType = body.Type;
 
-            if (i != expr.Length)
+            if (i != expr.Length && ((flags & ExpressionParsingFlags.AllowEarlyStop) == 0))
                throw SyntaxException.Create(expr, i, "Expected end of input.");
+
+            stoppedAt = i;
 
             if (typeof(TOutput) == typeof(Boolean))
                body = convertToBool(body);

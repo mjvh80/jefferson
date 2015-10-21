@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Globalization;
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Jefferson.Extensions
 {
@@ -40,7 +42,7 @@ namespace Jefferson.Extensions
 
       public static Boolean IsIntegral(this Expression e)
       {
-         return e.Type.IsIntegral(); 
+         return e.Type.IsIntegral();
       }
 
       public static Boolean IsNullConstant(this Expression e)
@@ -82,6 +84,19 @@ namespace Jefferson.Extensions
                return i;
 
          return -1;
+      }
+
+      public static Int32 IndexOfExpr(this String str, String expr, Int32 startAt = 0)
+      {
+         var r = new Regex(expr, RegexOptions.CultureInvariant);
+         var match = r.Match(str, startAt);
+         return match.Success ? match.Index : -1;
+      }
+
+      public static Char At(this String str, Int32 index)
+      {
+         if (str == null || index < 0 || index >= str.Length) return '\0';
+         return str[index];
       }
 
       #region ToStringInvariant

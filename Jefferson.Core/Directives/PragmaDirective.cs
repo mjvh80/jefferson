@@ -19,11 +19,6 @@ namespace Jefferson.Directives
          get { return null; }
       }
 
-      public Boolean MayBeEmpty
-      {
-         get { return true; }
-      }
-
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          if (!String.IsNullOrEmpty(source)) throw parserContext.SyntaxError(0, "#pragma should not have a body");

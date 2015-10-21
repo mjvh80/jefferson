@@ -19,11 +19,6 @@ namespace Jefferson.Directives
       String[] ReservedWords { get; }
 
       /// <summary>
-      /// Indicates that this directive is not closed, e.g. $$#define$$ is not closed by $$/define$$.
-      /// </summary>
-      Boolean MayBeEmpty { get; }
-
-      /// <summary>
       /// Compile the directive given the parser context, its arguments and body source. For any directive
       /// A in $$#A arguments$$ source $$/A$$.
       /// </summary>

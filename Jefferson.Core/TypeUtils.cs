@@ -108,7 +108,7 @@ namespace Jefferson
          return null;
       }
 
-      public static Func<Expression, Expression> GetNullConverterOrIdentity(Expression from, Type to) 
+      public static Func<Expression, Expression> GetNullConverterOrIdentity(Expression from, Type to)
       {
          return GetNullConverter(from, to) ?? (e => e);
       }
@@ -255,7 +255,33 @@ namespace Jefferson
                      f(e1, e2)));
       };
 
-
       #endregion
+
+      public static String CSharpToDotNetType(String type, Boolean ignoreCase)
+      {
+         Contract.Requires(type != null);
+
+         if (ignoreCase)
+            type = type.ToLowerInvariant();
+
+         switch (type)
+         {
+            case "int": return "System.Int32";
+            case "uint": return "System.UInt32";
+            case "long": return "System.Int64";
+            case "ulong": return "System.UInt64";
+            case "short": return "System.Int16";
+            case "ushort": return "System.UInt16";
+            case "bool": return "System.Boolean";
+            case "decimal": return "System.Decimal";
+            case "byte": return "System.Byte";
+            case "sbyte": return "System.SByte";
+            case "string": return "System.String";
+            case "float": return "System.Single";
+            case "double": return "System.Double";
+            case "object": return "System.Object";
+            default: return type;
+         }
+      }
    }
 }
