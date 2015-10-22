@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
@@ -13,6 +14,7 @@ namespace Jefferson.Directives
    /// $$/block$$
    /// It would otherwise be impossible to access x in the current scope as let does not introduce a new scope.
    /// </summary>
+   [DebuggerDisplay("#{Name}")]
    public sealed class BlockDirective : IDirective
    {
       private readonly Boolean _mEnableUnbindOutsideOfBlock;

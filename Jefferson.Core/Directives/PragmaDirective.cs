@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
@@ -7,6 +8,7 @@ namespace Jefferson.Directives
    /// A pragma is a processing instruction to the parser or the caller of the parser. They can be handled by hooking the <see cref="Jefferson.TemplateParser.PragmaSeen"/>  event
    /// of the parser.
    /// </summary>
+   [DebuggerDisplay("#{Name}")]
    public sealed class PragmaDirective : IDirective
    {
       public String Name

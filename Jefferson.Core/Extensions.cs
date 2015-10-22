@@ -86,6 +86,11 @@ namespace Jefferson.Extensions
          return -1;
       }
 
+      public static Int32 IndexOfOrdinal(this String str, String arg, Int32 startAt = 0)
+      {
+         return str.IndexOf(arg, startAt, StringComparison.Ordinal);
+      }
+
       public static Int32 IndexOfExpr(this String str, String expr, Int32 startAt = 0)
       {
          var r = new Regex(expr, RegexOptions.CultureInvariant);

@@ -3,12 +3,14 @@ using Jefferson.Output;
 using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
+   [DebuggerDisplay("#{Name}")]
    public class DefineDirective : IDirective
    {
       /// <summary>

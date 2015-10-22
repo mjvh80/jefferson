@@ -35,7 +35,12 @@ namespace Jefferson
    /// </summary>
    public class TemplateParser
    {
-      private static IDirective[] _GetDefaultDirectives()
+      /// <summary>
+      /// Returns the list of default directives supported. These are:
+      /// if, each, let, block, define, undef, comment and pragma
+      /// </summary>
+      /// <returns></returns>
+      public static IDirective[] GetDefaultDirectives()
       {
          return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new PragmaDirective() };
       }
@@ -43,14 +48,14 @@ namespace Jefferson
       /// <summary>
       /// Creates a parser with default directives registered.
       /// </summary>
-      public TemplateParser() : this(_GetDefaultDirectives()) { }
+      public TemplateParser() : this(GetDefaultDirectives()) { }
 
       /// <summary>
       /// Creates a template parser with the given directives and uses default options.
       /// </summary>
       public TemplateParser(params IDirective[] directives) : this(new TemplateOptions(), directives) { }
 
-      public TemplateParser(TemplateOptions options) : this(options, _GetDefaultDirectives()) { }
+      public TemplateParser(TemplateOptions options) : this(options, GetDefaultDirectives()) { }
 
       /// <summary>
       /// Creates a parser with the given directives.
@@ -84,18 +89,18 @@ namespace Jefferson
       }
 
       private readonly Dictionary<String, IDirective> _mDirectiveMap;
-      private static readonly Regex _sDirectiveNameExpr = new Regex("^[a-zA-Z]+$"); // for now
+      private static readonly Regex _sDirectiveNameExpr = new Regex("^[a-zA-Z]+$", RegexOptions.CultureInvariant); // for now
 
       public TemplateOptions Options { get; private set; }
 
       /// <summary>
       /// Convenience method. Calls Parse and compiles the resulting expression tree.
       /// </summary>
-      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
+      public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder binder = null)
       {
          Contract.Requires(source != null);
          Contract.Ensures(Contract.Result<Action<TContext, IOutputWriter>>() != null);
-         return Parse<TContext>(source, contextType, decls).Compile();
+         return Parse<TContext>(source, contextType, binder).Compile();
       }
 
       /// <summary>
@@ -104,9 +109,8 @@ namespace Jefferson
       /// <typeparam name="TContext">The type of the input value. Note that if contextType != typeof(TContext) then contextType must be a subclass of the context.</typeparam>
       /// <param name="source">Source code in which occurrences of template markers are replaced.</param>
       /// <param name="contextType">The actual type of the input value.</param>
-      /// <param name="decls">Variable declartions, see <see cref="IVariableBinder"/></param>
-      /// <param name="except">If false, the parser won't throw if a variable is not declared. The empty string is used then.</param>
-      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder decls = null)
+      /// <param name="binder">Variable binder, see <see cref="IVariableBinder"/></param>
+      public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder binder = null)
       {
          Contract.Requires(source != null);
          Contract.Ensures(Contract.Result<Expression>() != null);
@@ -116,7 +120,7 @@ namespace Jefferson
          var ctx = new TemplateParserContext(this, source)
          {
             ContextTypes = new List<Type> { contextType },
-            ContextDeclarations = new List<IVariableBinder> { decls },
+            ContextDeclarations = new List<IVariableBinder> { binder },
             DirectiveMap = _mDirectiveMap,
             UserProvidedValueFilter = ValueFilter,
             UserProvidedOutputFilter = OutputFilter,
@@ -137,7 +141,6 @@ namespace Jefferson
 
          var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
          var buffer = new StringBuilder();
-
          tree.Compile()(context, new StringBuilderOutputWriter(buffer));
          return buffer.ToString();
       }
@@ -277,11 +280,11 @@ namespace Jefferson
          /// <summary>
          /// Pushes a scope which is a Type for the current scope/context and variable declarations for this scope.
          /// </summary>
-         public void PushScope(Type context, IVariableBinder variables = null)
+         public void PushScope(Type context, IVariableBinder binder = null)
          {
-            Ensure.NotNull(context, "context"); // variables may be null, i.e. no new variables introduced
+            Contract.Requires(context != null);
             ContextTypes.Add(context);
-            ContextDeclarations.Add(variables);
+            ContextDeclarations.Add(binder);
          }
 
          /// <summary>
@@ -325,9 +328,9 @@ namespace Jefferson
          /// <summary>
          /// Calculate the position in the global source.
          /// </summary>
-         public Int32 GetPosition(Int32 position)
+         public Int32 GetPosition(Int32 relativePosition)
          {
-            return CurrentPositionOffset + position;
+            return CurrentPositionOffset + relativePosition;
          }
 
          /// <summary>
@@ -336,6 +339,8 @@ namespace Jefferson
          /// </summary
          public Expression GetNthContext(Int32 n)
          {
+            Contract.Requires(n >= 0);
+            Contract.Ensures(Contract.Result<Expression>() != null);
             Contract.Assert(RuntimeContexts.Type == typeof(List<Object>));
 
             var indexer = typeof(List<Object>).GetProperty("Item");
@@ -351,14 +356,15 @@ namespace Jefferson
          /// <summary>
          /// Throws a <see cref="SyntaxException"/> by also translating the position to the global source.
          /// </summary>
-         public Exception SyntaxError(Int32 relativeIdx, String msg, params Object[] args)
+         public Exception SyntaxError(Int32 relativeIndex, String msg, params Object[] args)
          {
-            return SyntaxException.Create(this.Source, GetPosition(relativeIdx), msg, args);
+            return SyntaxException.Create(this.Source, GetPosition(relativeIndex), msg, args);
          }
 
-         public Exception SyntaxError(Int32 relativeIdx, Exception inner, String msg, params Object[] args)
+         public Exception SyntaxError(Int32 relativeIndex, Exception inner, String msg, params Object[] args)
          {
-            return SyntaxException.Create(inner, Source, GetPosition(relativeIdx), msg, args);
+            Contract.Requires(inner != null);
+            return SyntaxException.Create(inner, Source, GetPosition(relativeIndex), msg, args);
          }
 
          #endregion
@@ -368,8 +374,7 @@ namespace Jefferson
          /// </summary>
          public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source)
          {
-            // todo: add option, e.g. enable tracing
-            Ensure.NotNull(source, "source");
+            Contract.Requires(source != null);
 
             if (!(typeof(TContext).IsAssignableFrom(CurrentContextType)))
                throw Utils.InvalidOperation("Invalid Compile call, generic argument type '{0}' is not a baseclass for current context type '{1}'.", typeof(TContext).FullName, CurrentContextType.FullName);

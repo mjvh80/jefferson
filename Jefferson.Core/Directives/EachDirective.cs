@@ -3,11 +3,14 @@ using Jefferson.Output;
 using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
+   [DebuggerDisplay("#each")]
    public sealed class EachDirective : IDirective
    {
       private readonly Boolean _mIsReadonly;
@@ -40,6 +43,7 @@ namespace Jefferson.Directives
          String empty = null;
          if (endIdx != source.Length)
          {
+            Contract.Assume(endIdx + 2 < source.Length);
             var ifClose = source.IndexOf("$$", endIdx + 2) + 2;
             endIdx = source.Length;
             empty = source.Substring(ifClose, endIdx - ifClose);

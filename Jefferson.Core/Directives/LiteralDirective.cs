@@ -1,5 +1,6 @@
 ﻿using Jefferson.Output;
 using System;
+using System.Diagnostics;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
@@ -9,6 +10,7 @@ namespace Jefferson.Directives
    /// NOTE: when used with ReplaceDeep, the body of the #literal directive will be evaluated in a second run.
    /// NOTE (ii): cannot be nested currently
    /// </summary>
+   [DebuggerDisplay("#{Name}")]
    public class LiteralDirective : IDirective
    {
       public virtual String Name

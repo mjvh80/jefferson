@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
+   [DebuggerDisplay("#{Name}")]
    public sealed class UndefDirective : IDirective
    {
       public String Name

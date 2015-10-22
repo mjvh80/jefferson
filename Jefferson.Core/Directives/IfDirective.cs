@@ -1,11 +1,13 @@
 ﻿using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
+   [DebuggerDisplay("#{Name}")]
    public sealed class IfDirective : IDirective
    {
       private readonly Boolean _mAllowUnknownNames;

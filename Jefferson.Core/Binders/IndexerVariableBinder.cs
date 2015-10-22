@@ -13,6 +13,9 @@ namespace Jefferson.Binders
    /// </summary>
    public class IndexerVariableBinder : IVariableBinder
    {
+      /// <summary>
+      /// Map variable names to their types.
+      /// </summary>
       protected readonly IDictionary<String, Type> mTypeDeclarations;
 
       public IndexerVariableBinder(IDictionary<String, Type> variableTypeDeclarations)
@@ -24,6 +27,7 @@ namespace Jefferson.Binders
       private PropertyInfo _GetIndexer(Expression currentContext)
       {
          Contract.Requires(currentContext != null);
+         Contract.Ensures(Contract.Result<PropertyInfo>() != null);
 
          // Todo: we could look for e.g. things like Chars... i.e. the correctly marked indexer.
          var indexer = currentContext.Type.GetProperty("Item");
@@ -32,7 +36,7 @@ namespace Jefferson.Binders
          return indexer;
       }
 
-      public virtual System.Linq.Expressions.Expression BindVariableRead(Expression currentContext, String name)
+      public virtual Expression BindVariableRead(Expression currentContext, String name)
       {
          Type varType;
          if (!mTypeDeclarations.TryGetValue(name, out varType)) return null;
