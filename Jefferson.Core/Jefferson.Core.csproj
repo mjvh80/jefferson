@@ -128,11 +128,13 @@
   <ItemGroup>
     <Compile Include="Binders\IndexerVariableBinder.cs" />
     <Compile Include="Binders\ReadOnlyBinder.cs" />
+    <Compile Include="Directives\AssertDirective.cs" />
     <Compile Include="Directives\BlockDirective.cs" />
     <Compile Include="Directives\CommentDirective.cs" />
     <Compile Include="Directives\DefineDirective.cs" />
     <Compile Include="Directives\DirectiveContract.cs" />
     <Compile Include="Directives\EachDirective.cs" />
+    <Compile Include="Directives\ErrorDirective.cs" />
     <Compile Include="Directives\IDirective.cs" />
     <Compile Include="Directives\IfDirective.cs" />
     <Compile Include="Directives\LetDirective.cs" />
