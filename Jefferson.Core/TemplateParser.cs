@@ -588,12 +588,17 @@ namespace Jefferson
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
          {
+            Contract.Requires(expr != null);
+            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
+
             var ignore = 0;
             return _CompileExpression<TOutput>(expr, 0, 0, out ignore);
          }
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr, Int32 startAt, out Int32 stoppedAt)
          {
+            Contract.Requires(expr != null);
+            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
             return _CompileExpression<TOutput>(expr, ExpressionParsingFlags.AllowEarlyStop, startAt, out stoppedAt);
          }
 
