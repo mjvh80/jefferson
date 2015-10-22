@@ -21,18 +21,17 @@ namespace Jefferson.Directives
       /// </summary>
       protected readonly Boolean mAllowOutStatement;
 
-      public DefineDirective() : this("define", null, false, false) { }
+      public DefineDirective() : this("define", false, false) { }
 
-      protected internal DefineDirective(String name, String @out, Boolean allowOut, Boolean requireOut)
+      protected internal DefineDirective(String name, Boolean allowOut, Boolean requireOut)
       {
          Contract.Requires(!String.IsNullOrEmpty(name));
-         Contract.Requires(allowOut || @out == null);
 
          mRequireOutStatement = requireOut;
          mAllowOutStatement = allowOut;
 
          Name = name;
-         ReservedWords = mAllowOutStatement ? new[] { @out } : null;
+         ReservedWords = mAllowOutStatement ? new[] { "out" } : null;
       }
 
       public String Name { get; private set; }
@@ -41,7 +40,7 @@ namespace Jefferson.Directives
 
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
-         if (String.IsNullOrEmpty(arguments))
+         if (String.IsNullOrWhiteSpace(arguments))
             throw parserContext.SyntaxError(0, "Expected a name to bind to something");
 
          var compiledVars = new Dictionary<String, CompiledExpression<Object, Object>>();
@@ -53,10 +52,10 @@ namespace Jefferson.Directives
 
          if (haveSource && mAllowOutStatement)
          {
-            var outIdx = parserContext.FindDirectiveEnd(source, 0, "$$#out$$");
+            var outIdx = parserContext.FindDirectiveEnd(source, 0, "$$#out");
 
             body = outIdx < 0 ? source : source.Substring(0, outIdx);
-            @outBody = outIdx < 0 ? null : source.Substring(outIdx + "$$#out$$".Length);
+            @outBody = outIdx < 0 ? null : source.Substring(source.IndexOf("$$", outIdx + 2) + 2);
             haveOutStmt = outIdx >= 0;
 
             if (eqIdx >= 0)
@@ -135,23 +134,26 @@ namespace Jefferson.Directives
                var sb = Expression.Variable(typeof(StringBuilderOutputWriter));
                var ctxParam = Expression.Parameter(typeof(Object));
 
+               var rt = TypeUtils.CSharpToDotNetType(typedName.Item1, parserContext.Options.IgnoreCase);
+               if (eqIdx < 0 && rt != "System.String")
+                  throw parserContext.SyntaxError(startIdx, "Unexpected return type specification. Because #{0} has a body, return type is always System.String.", Name);
+
+               Type funcType = null;
+               CompiledExpression<Object, Object> @value = null;
+               Type returnType = null;
                if (@params != null)
                {
-                  CompiledExpression<Object, Object> @value = null;
-                  Type returnType = typeof(String);
+                  returnType = typeof(String);
+
                   if (eqIdx > 0)
                   {
-                     var rt = TypeUtils.CSharpToDotNetType(typedName.Item1, parserContext.Options.IgnoreCase);
                      // NOTE: the expression parser *knows* the actual outputtype, and returns it.
                      // As we don't know it during C# compile time we specify Object and perform the conversion below. Thus this
                      // conversion won't fail at runtime!
                      @value = parserContext.CompileExpression<Object>(arguments, allowUnknownNames ? eqIdx + 2 : eqIdx + 1, out startIdx);
                      returnType = Type.GetType(rt, throwOnError: true, ignoreCase: parserContext.Options.IgnoreCase); // todo: errors
                   }
-                  else if (typedName.Item1 != "System.String")
-                     throw parserContext.SyntaxError(startIdx, "Unexpected return type specification. Because #{0} has a body, return type is always System.String.", Name);
 
-                  Type funcType;
                   switch (@params.Length)
                   {
                      case 0: funcType = typeof(Func<>); break;
@@ -165,48 +167,34 @@ namespace Jefferson.Directives
                   }
 
                   funcType = funcType.MakeGenericType(paramBinder.ParamDecls.Select(p => p.Value.Type).Concat(new[] { returnType }).ToArray());
-
-                  // Ensure that e.g. string x() = 1 works (or more common x() = 1).
-                  var converter = @value == null ? null : TypeUtils.GetConverter(@value.OutputType, returnType, parserContext.Options.IgnoreCase);
-
-                  compiledVars.Add(name, new CompiledExpression<Object, Object>
-                  {
-                     Ast = Expression.Lambda<Func<Object, Object>>(
-                        // The result *value* here is not a string, but e.g. a Func<String, String> (for one parameter).
-                        // Thus when the define is used, the Func is evaluated by the expression parser when it invokes the lambda.
-                              Expression.Lambda(funcType,
-                                 @value == null
-                                 ?
-                        // The result is the body evaluated.
-                                 (Expression)Expression.Block(new[] { sb },
-                                      Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
-                                      Expression.Invoke(parserContext.Parse<Object>(body) /* PARSED BODY */, ctxParam, sb),
-                                         Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())))
-                                 :
-                        // The result is an inline function. Invoke it and convert the type.
-                        // Note that this type conversion will not fail at runtime!
-                                 converter(Expression.Convert(Expression.Invoke(@value.Ast, Expression.Convert(ctxParam, typeof(Object))), @value.OutputType)),
-
-                                 paramBinder.ParamDecls.Values),
-                              ctxParam),
-                     OutputType = funcType
-                  });
                }
-               else
+
+               // Ensure that e.g. string x() = 1 works (or more common x() = 1).
+               var converter = @value == null ? null : TypeUtils.GetConverter(@value.OutputType, returnType, parserContext.Options.IgnoreCase);
+
+               var bodyExpr = @value == null
+                              ? // The result is the body evaluated.
+                              (Expression)Expression.Block(new[] { sb },
+                                   Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
+                                   Expression.Invoke(parserContext.Parse<Object>(body) /* PARSED BODY */, ctxParam, sb),
+                                      Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())))
+                              : /* 
+                                 * The result is an inline function. Invoke it and convert the type.
+                                 * Note that this case is only used if parameters are used.
+                                 */
+                              converter(Expression.Convert(Expression.Invoke(@value.Ast, Expression.Convert(ctxParam, typeof(Object))), @value.OutputType));
+
+               compiledVars.Add(name, new CompiledExpression<Object, Object>
                {
-                  compiledVars.Add(name, new CompiledExpression<Object, Object>
-                  {
-                     Ast = Expression.Lambda<Func<Object, Object>>(
-                              Expression.Block(new[] { sb },
-                                 Expression.Assign(sb, Expression.New(typeof(StringBuilderOutputWriter))),
-                                 Expression.Invoke(parserContext.Parse<Object>(body) /* PARSED BODY */, ctxParam, sb),
-                                 Expression.Convert(
-                                    Expression.Call(sb, Utils.GetMethod<StringBuilderOutputWriter>(s => s.GetOutput())),
-                                    typeof(Object))),
-                              ctxParam),
-                     OutputType = typeof(String)
-                  });
-               }
+                  Ast = Expression.Lambda<Func<Object, Object>>(
+                           @params == null ?
+                              bodyExpr :
+                     /* The result *value* here is not a string, but e.g. a Func<String, String> (for one parameter).
+                      * Thus when the define is used, the Func is evaluated by the expression parser when it invokes the lambda. */
+                              Expression.Lambda(funcType, bodyExpr, paramBinder.ParamDecls.Values),
+                        ctxParam),
+                  OutputType = funcType ?? typeof(String)
+               });
             }
 
             parserContext.OverrideAllowUnknownNames = oldOverride;

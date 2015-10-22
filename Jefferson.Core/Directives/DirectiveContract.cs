@@ -13,7 +13,7 @@ namespace Jefferson.Directives.Contracts
          get
          {
             Contract.Ensures(Contract.Result<String>() != null);
-            Contract.Ensures(Regex.IsMatch(Contract.Result<String>(), "^[a-zA-Z]+$")); // todo bit harhs ey
+            Contract.Ensures(Regex.IsMatch(Contract.Result<String>(), "^[a-zA-Z]+$")); // todo bit harsh ey
             return null;
          }
       }

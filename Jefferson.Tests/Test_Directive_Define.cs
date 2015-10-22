@@ -18,7 +18,7 @@ namespace Jefferson.Tests
       [Fact]
       public void Internal_define_can_have_out()
       {
-         var result = new TemplateParser(new DefineDirective("define", "out", allowOut: true, requireOut: true)).Replace(@"
+         var result = new TemplateParser(new DefineDirective("define", allowOut: true, requireOut: true)).Replace(@"
 
             $$#define foo = 'bar'$$
                output!
@@ -36,6 +36,71 @@ namespace Jefferson.Tests
          Assert.Contains("bar", result.Trim());
          Assert.Contains("output!", result.Trim());
          Assert.Contains("blah blah", result.Trim());
+      }
+
+      [Fact]
+      public void Returntype_must_be_string_if_specified()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define y x$$
+
+               foobar 
+
+         $$/define$$
+
+         $$ x $$
+
+         ", context));
+
+         Assert.Contains("Unexpected return type specification. Because #define has a body, return type is always System.String", error.Message);
+      }
+
+      [Fact]
+      public void Can_specify_string_returntype()
+      {
+         var result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define string x()$$
+
+               foobar 
+
+         $$/define$$
+
+         $$ x $$
+
+         ", context);
+
+         result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define string x$$
+
+               foobar 
+
+         $$/define$$
+
+         $$ x $$
+
+         ", context);
+
+         result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define System.String x()$$
+
+               foobar 
+
+         $$/define$$
+
+         $$ x $$
+
+         ", context);
+
+         result = new TemplateParser(new DefineDirective()).Replace(@"
+         $$#define System.String x$$
+
+               foobar 
+
+         $$/define$$
+
+         $$ x $$
+
+         ", context);
       }
 
       [Fact]
@@ -682,16 +747,6 @@ namespace Jefferson.Tests
       public void When_define_has_body_returntype_must_be_string()
       {
          var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
-           $$#define string foobar(x)$$
-              $$x$$
-           $$/define$$
-           $$#define string foobar()$$
-           $$/define$$
-           ", context));
-
-         Assert.Contains("Unexpected return type specification", error.Message);
-
-         error = Assert.Throws<SyntaxException>(() => new TemplateParser(new DefineDirective()).Replace(@"
            $$#define int foobar(int x)$$
               $$x$$
            $$/define$$

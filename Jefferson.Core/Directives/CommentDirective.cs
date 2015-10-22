@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
@@ -12,7 +13,7 @@ namespace Jefferson.Directives
          }
       }
 
-      public override System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
+      public override Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          return Utils.NopExpression;
       }

@@ -261,10 +261,7 @@ namespace Jefferson
       {
          Contract.Requires(type != null);
 
-         if (ignoreCase)
-            type = type.ToLowerInvariant();
-
-         switch (type)
+         switch (ignoreCase ? type.ToLowerInvariant() : type)
          {
             case "int": return "System.Int32";
             case "uint": return "System.UInt32";

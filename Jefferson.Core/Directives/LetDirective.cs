@@ -6,7 +6,7 @@ namespace Jefferson.Directives
 {
    public sealed class LetDirective : DefineDirective
    {
-      public LetDirective() : base("let", "out", allowOut: true, requireOut: true) { }
+      public LetDirective() : base("let", allowOut: true, requireOut: true) { }
 
       protected override IDefineVariableBinder CreateVariableBinder(Parsing.TemplateParserContext parserContext)
       {

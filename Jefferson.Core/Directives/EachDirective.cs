@@ -32,7 +32,6 @@ namespace Jefferson.Directives
          if (source == null) throw parserCtx.SyntaxError(0, "#each directive may not be empty");
 
          var closeIdx = 0;
-
          var endIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else$$");
          if (endIdx < 0) endIdx = source.Length;
 
@@ -41,7 +40,7 @@ namespace Jefferson.Directives
          String empty = null;
          if (endIdx != source.Length)
          {
-            var ifClose = endIdx + "$$#else$$".Length;
+            var ifClose = source.IndexOf("$$", endIdx + 2) + 2;
             endIdx = source.Length;
             empty = source.Substring(ifClose, endIdx - ifClose);
          }

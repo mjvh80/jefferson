@@ -32,6 +32,7 @@ namespace Jefferson.Directives
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
          if (source == null) throw parserContext.SyntaxError(0, "#block directive should not be empty"); // could allow nop?
+         if (!String.IsNullOrWhiteSpace(arguments)) throw parserContext.SyntaxError(0, "#block directive does not accept arguments");
 
          var currentContext = parserContext.GetNthContext(0);
          var currentContextAsObj = Expression.Convert(currentContext, typeof(Object));

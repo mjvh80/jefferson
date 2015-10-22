@@ -51,7 +51,7 @@ namespace Jefferson.Directives
                closeIdx += 2;
             }
 
-            if (String.IsNullOrEmpty(expr) || expr.Trim().Length == 0) throw parserCtx.SyntaxError(idx, "Empty expression in if or elif.");
+            if (String.IsNullOrWhiteSpace(expr)) throw parserCtx.SyntaxError(idx, "Empty expression in if or elif.");
 
             endIfIdx = parserCtx.FindDirectiveEnd(source, closeIdx, "$$#else", "$$#elif");
             if (endIfIdx < 0) endIfIdx = source.Length;
@@ -63,8 +63,7 @@ namespace Jefferson.Directives
 
             parserCtx.OverrideAllowUnknownNames = oldOverride;
 
-            var contents = source.Substring(closeIdx, endIfIdx - closeIdx);
-            var compiledContents = parserCtx.Parse<Object>(contents);
+            var compiledContents = parserCtx.Parse<Object>(source.Substring(closeIdx, endIfIdx - closeIdx));
 
             ifStmt.Add(Tuple.Create<Expression, Expression>(Expression.Invoke(compiledPredicate.Ast, contextParamAsObj),
                                                             Expression.Invoke(compiledContents, contextParamAsObj, parserCtx.Output)));
@@ -77,17 +76,13 @@ namespace Jefferson.Directives
             switch (source.Substring(endIfIdx, 6))
             {
                case "$$#els": // else
-                  closeIdx = endIfIdx + "$$#else$$".Length;
-                  endIfIdx = source.Length;
-
-                  contents = source.Substring(closeIdx, endIfIdx - closeIdx);
-                  compiledContents = parserCtx.Parse<Object>(contents);
-
+                  closeIdx = source.IndexOf("$$", endIfIdx + 2) + 2; // note: parser guarantees $$ exists
+                  compiledContents = parserCtx.Parse<Object>(source.Substring(closeIdx, source.Length - closeIdx));
                   ifStmt.Add(Tuple.Create<Expression, Expression>(null, Expression.Invoke(compiledContents, contextParamAsObj, parserCtx.Output)));
                   goto EndIf;
 
                case "$$#eli": // elseif
-                  idx = endIfIdx + "$$#elif ".Length;
+                  idx = endIfIdx + "$$#elif".Length;
                   continue;
 
                default:

@@ -19,6 +19,9 @@ namespace Jefferson.Directives
 
       public System.Linq.Expressions.Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
+         if (String.IsNullOrWhiteSpace(arguments)) throw parserContext.SyntaxError(0, "Missing names to undef.");
+         if (source != null) throw parserContext.SyntaxError(0, "#undef directive should be empty");
+
          var args = arguments.Split(new[] { ';' }).Select(n => n.Trim()).Where(n => n.Length > 0);
          foreach (var name in args)
             if (!ExpressionParser<Object, Object>.IsValidName(name))

@@ -23,7 +23,7 @@ namespace Jefferson.Directives
 
       public virtual Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
-         if (arguments != null && arguments.Trim().Length > 0) throw parserContext.SyntaxError(0, "#literal directive does not take arguments");
+         if (!String.IsNullOrWhiteSpace(arguments)) throw parserContext.SyntaxError(0, "#literal directive does not take arguments");
          if (source == null) throw parserContext.SyntaxError(0, "#literal directive may not be empty");
          return Expression.Call(parserContext.Output, Utils.GetMethod<IOutputWriter>(b => b.Write("")), Expression.Constant(source));
       }

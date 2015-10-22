@@ -21,8 +21,8 @@ namespace Jefferson.Directives
 
       public Expression Compile(Parsing.TemplateParserContext parserContext, String arguments, String source)
       {
-         if (!String.IsNullOrEmpty(source)) throw parserContext.SyntaxError(0, "#pragma should not have a body");
-         if (String.IsNullOrEmpty(arguments)) throw parserContext.SyntaxError(0, "#pragma arguments should not be empty");
+         if (source != null) throw parserContext.SyntaxError(0, "#pragma should not have a body");
+         if (String.IsNullOrWhiteSpace(arguments)) throw parserContext.SyntaxError(0, "#pragma arguments should not be empty");
          try
          {
             parserContext.Parser.OnPragmaSeen(parserContext, arguments);
