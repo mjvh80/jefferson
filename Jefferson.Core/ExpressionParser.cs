@@ -82,7 +82,7 @@ namespace Jefferson
 
    internal delegate BinOpMap DefineOpFn(BinOp f, params String[] operators);
    internal delegate Production MakeBinOpProductionFn(Func<Production> leftExpr, params BinOpMap[] ops);
-   internal delegate void Throw(String msg, params Object[] args);
+   internal delegate Exception Throw(String msg, params Object[] args);
 
    public delegate Expression NameResolverDelegate(Expression thisExpr, String name, String typeName, NameResolverDelegate defaultResolver);
 
@@ -167,13 +167,13 @@ namespace Jefferson
          return ParseExpression(expr, null, ExpressionParsingFlags.None, actualContextType);
       }
 
-      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
+      public ExpressionDelegate<TContext, TOutput> ParseExpression(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, String[] usingNameSpaces = null)
       {
          Contract.Requires(expr != null);
 
          try
          {
-            var compileResult = _ParseExpressionInternal(expr, nameResolver, flags, actualContextType);
+            var compileResult = _ParseExpressionInternal(expr, nameResolver, flags, actualContextType, null, usingNameSpaces);
             var ast = compileResult.Ast;
 
             // Reduce if possible.
@@ -198,7 +198,7 @@ namespace Jefferson
          }
       }
 
-      public Boolean TryParseExpression(String expr, out ExpressionDelegate<TContext, TOutput> expression, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null)
+      public Boolean TryParseExpression(String expr, out ExpressionDelegate<TContext, TOutput> expression, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, String[] @usingNameSpaces = null)
       {
          Contract.Requires(expr != null);
 
@@ -207,7 +207,7 @@ namespace Jefferson
          // For now, we'll do this using exceptions. Maybe at some point we can optimize a bit.
          try
          {
-            expression = ParseExpression(expr, nameResolver, flags, actualContextType);
+            expression = ParseExpression(expr, nameResolver, flags, actualContextType, @usingNameSpaces);
             return true;
          }
          catch
@@ -276,10 +276,10 @@ namespace Jefferson
          };
       }
 
-      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null, String[] usingNamespaces = null)
       {
          var ignore = 0;
-         return _ParseExpressionInternal(expr, 0, out ignore, nameResolver, flags, actualContextType, valueFilter);
+         return _ParseExpressionInternal(expr, 0, out ignore, nameResolver, flags, actualContextType, valueFilter, usingNamespaces);
       }
 
       // Parses expressions.
@@ -307,7 +307,7 @@ namespace Jefferson
       //             ( numberExpr ) |
       //             ( true ) | ( false ) | ( null ) |
       //             ( identifierExpr )
-      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, Int32 startAt, out Int32 stoppedAt, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null)
+      internal CompiledExpression<TContext, TOutput> _ParseExpressionInternal(String expr, Int32 startAt, out Int32 stoppedAt, NameResolverDelegate nameResolver = null, ExpressionParsingFlags flags = ExpressionParsingFlags.None, Type actualContextType = null, Func<String, Object, Object> valueFilter = null, String[] usingNamespaces = null)
       {
          Contract.Requires(expr != null);
          Contract.Ensures(Contract.Result<CompiledExpression<TContext, TOutput>>() != null);
@@ -324,6 +324,13 @@ namespace Jefferson
 
          if (!typeof(TContext).IsAssignableFrom(actualContextType))
             throw Utils.InvalidOperation("Actual context type '{0}' is not of type '{1}'.", actualContextType.FullName, typeof(TContext).FullName);
+
+         if (usingNamespaces != null)
+         {
+            var invalidNamespaces = usingNamespaces.Where(ns => !ParserUtils.IsValidNamespace(ns));
+            if (invalidNamespaces.Any())
+               throw Utils.InvalidOperation("Supplied namespace is not valid: '{0}'", invalidNamespaces.FirstOrDefault());
+         }
 
          // Pre-declare those so they can be closed over.
          Func<String> nameToken = null;
@@ -603,6 +610,15 @@ namespace Jefferson
                // Resolve the identifier to a value.
                identifier = ((_IdentifierExpression)result).Identifier;
 
+               Func<String, String, Expression> resolveWithUsings = (name, nameSpace) =>
+               {
+                  if (nameSpace != null) nameSpace = "." + nameSpace;
+                  if (usingNamespaces == null || usingNamespaces.Length == 0) return null;
+                  var results = usingNamespaces.Select(ns => nameResolver(actualContextExpr, name, ns + nameSpace, defaultResolver)).ToArray();
+                  if (results.Length > 1) throw throwExpected("known name, '{0}' is ambiguous.", name);
+                  return results.Length == 0 ? null : results[0];
+               };
+
                if (identifier.Contains("."))
                {
                   var parts = identifier.Split('.');
@@ -614,6 +630,9 @@ namespace Jefferson
                      if (result == null) continue;
                      periodsLeft = parts.Length - j - 1; break;
                   }
+
+                  if (result == null)
+                     result = resolveWithUsings(parts[parts.Length - 1], String.Join(".", parts, 0, parts.Length - 1));
 
                   // Backtrack for continued parsing below.
                   for (var p = periodsLeft; p > 0; p--)
@@ -630,6 +649,7 @@ namespace Jefferson
                   // Simple name without periods, but not a method call.
                   // See above, because the default resolver is used for qualified names first we must try that in order to be consistent.
                   result = nameResolver(actualContextExpr, identifier, null, defaultResolver);
+                  if (result == null) result = resolveWithUsings(identifier, null);
                   if (result == null) throwExpected("known name, could not resolve '{0}'", identifier);
                   identifier = "";
                }

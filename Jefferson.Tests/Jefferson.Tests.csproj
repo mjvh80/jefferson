@@ -62,6 +62,7 @@
     <Compile Include="Test_Directive_If.cs" />
     <Compile Include="Test_Directive_Let.cs" />
     <Compile Include="Test_Directive_Literal.cs" />
+    <Compile Include="Test_Directive_Using.cs" />
     <Compile Include="TypeConversionTests.cs" />
   </ItemGroup>
   <ItemGroup>

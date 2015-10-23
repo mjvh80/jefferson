@@ -141,6 +141,7 @@
     <Compile Include="Directives\LiteralDirective.cs" />
     <Compile Include="Directives\PragmaDirective.cs" />
     <Compile Include="Directives\UndefDirective.cs" />
+    <Compile Include="Directives\UsingDirective.cs" />
     <Compile Include="Ensure.cs" />
     <Compile Include="ExpressionParser.cs" />
     <Compile Include="Extensions.cs" />

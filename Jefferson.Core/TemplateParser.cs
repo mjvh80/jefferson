@@ -37,12 +37,12 @@ namespace Jefferson
    {
       /// <summary>
       /// Returns the list of default directives supported. These are:
-      /// if, each, let, block, define, undef, comment and pragma
+      /// if, each, let, block, define, undef, comment, pragma and using
       /// </summary>
       /// <returns></returns>
       public static IDirective[] GetDefaultDirectives()
       {
-         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new PragmaDirective() };
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new PragmaDirective(), new UsingDirective() };
       }
 
       /// <summary>
@@ -247,6 +247,8 @@ namespace Jefferson
 
          internal Func<String, Object, Object> UserProvidedValueFilter;
          internal Func<String, String> UserProvidedOutputFilter;
+
+         internal List<String> UsingNamespaces = new List<String>(0);
 
          public Boolean? OverrideAllowUnknownNames { get; set; }
 
@@ -619,7 +621,7 @@ namespace Jefferson
             if (this.Options.UseCurrentCulture)
                flags |= ExpressionParsingFlags.UseCurrentCulture;
 
-            return parser._ParseExpressionInternal(expr, startAt, out stoppedAt, ResolveName, flags, this.CurrentContextType, this.UserProvidedValueFilter);
+            return parser._ParseExpressionInternal(expr, startAt, out stoppedAt, ResolveName, flags, this.CurrentContextType, this.UserProvidedValueFilter, this.UsingNamespaces.ToArray());
          }
 
          /// <summary>

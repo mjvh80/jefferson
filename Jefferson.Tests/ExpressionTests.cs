@@ -13,6 +13,15 @@ namespace Jefferson.Tests
 {
    #region Test Helper Classes
 
+   namespace NsFoobar
+   {
+      public enum NsFooEnum
+      {
+         NsFoo = 1,
+         NsBar = 2
+      }
+   }
+
    public class Foo
    {
       public String Bar = "bar";
@@ -160,6 +169,28 @@ namespace Jefferson.Tests
          TestUtils.AssertThrowsContractException(() => p.ParseExpression("Actual", (ActualContext)null));
 
          p.ParseExpression<ActualContext>("Actual");
+      }
+
+      [Fact]
+      public void Using_namespaces_works()
+      {
+         var p = new ExpressionParser<Context, String>();
+         var r = p.ParseExpression("NsFooEnum.NsBar + 2", null, ExpressionParsingFlags.None, typeof(ActualContext), new[] { typeof(NsFoobar.NsFooEnum).Namespace });
+         var t = r(new ActualContext());
+         Assert.Equal("4", t.Trim());
+      }
+
+      [Theory]
+      [InlineData("Foo . Bar !")]
+      [InlineData("")]
+      [InlineData(null)]
+      public void Bad_namespace_is_detected(String ns)
+      {
+         var p = new ExpressionParser<Context, String>();
+         var r = Assert.Throws<SyntaxException>(() => p.ParseExpression("NsFooEnum.NsBar + 2", null, ExpressionParsingFlags.None, typeof(ActualContext), new[] { ns }));
+         var error = r.InnerException;
+         Assert.NotNull(error);
+         Assert.Contains("Supplied namespace is not valid:", error.Message);
       }
 
       [Fact]

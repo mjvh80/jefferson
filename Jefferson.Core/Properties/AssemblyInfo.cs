@@ -23,8 +23,8 @@ using System.Runtime.InteropServices;
 [assembly: Guid("75992e07-f7c6-4b16-9d62-b878632ab693")]
 
 //
-[assembly: AssemblyVersion("0.1.110.0")]
-[assembly: AssemblyFileVersion("0.1.110.0")]
+[assembly: AssemblyVersion("0.1.117.0")]
+[assembly: AssemblyFileVersion("0.1.117.0")]
 //
 
 [assembly: InternalsVisibleTo("Jefferson.Tests")]
