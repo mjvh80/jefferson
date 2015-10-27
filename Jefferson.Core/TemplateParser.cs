@@ -37,12 +37,12 @@ namespace Jefferson
    {
       /// <summary>
       /// Returns the list of default directives supported. These are:
-      /// if, each, let, block, define, undef, comment, literal, pragma and using
+      /// if, each, let, block, define, undef, comment, literal, pragma, using and error.
       /// </summary>
       /// <returns></returns>
       public static IDirective[] GetDefaultDirectives()
       {
-         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new LiteralDirective(), new PragmaDirective(), new UsingDirective() };
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new LiteralDirective(), new PragmaDirective(), new UsingDirective(), new ErrorDirective() };
       }
 
       /// <summary>
@@ -89,7 +89,7 @@ namespace Jefferson
       }
 
       private readonly Dictionary<String, IDirective> _mDirectiveMap;
-   
+
 
       public TemplateOptions Options { get; private set; }
 
