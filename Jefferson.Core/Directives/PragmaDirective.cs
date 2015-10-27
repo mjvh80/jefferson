@@ -29,6 +29,7 @@ namespace Jefferson.Directives
          {
             parserContext.Parser.OnPragmaSeen(parserContext, arguments);
          }
+         catch (StopProcessingException) { throw; }
          catch (Exception e)
          {
             throw parserContext.SyntaxError(0, e, "Unhandled exception processing #pragma '{0}'", arguments);

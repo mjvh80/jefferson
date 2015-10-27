@@ -6,11 +6,11 @@ using Xunit.Extensions;
 
 namespace Jefferson.Tests
 {
-   public class Test_Directive_Define
+   public class Test_Directive_Define_And_Undef
    {
       private TestContext context;
 
-      public Test_Directive_Define()
+      public Test_Directive_Define_And_Undef()
       {
          context = new TestContext();
       }
@@ -237,6 +237,15 @@ namespace Jefferson.Tests
          {
             Assert.Contains("Cannot unset variable 'foo' because it has been bound in a let context.", e.Message.Trim());
          }
+      }
+
+      [Theory]
+      [InlineData("$$#undef foo$$$$/undef$$", "#undef directive should be empty")]
+      [InlineData("$$#undef ;/$$", "requires arguments")]
+      public void Undef_syntax_facts(String syntax, String expectedError)
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new UndefDirective()).Replace(syntax, context));
+         Assert.Contains(expectedError, error.Message);
       }
 
       public class NonBinderContext

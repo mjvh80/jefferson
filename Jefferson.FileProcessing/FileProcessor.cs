@@ -7,6 +7,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml;
 
 namespace Jefferson.FileProcessing
@@ -42,10 +43,21 @@ namespace Jefferson.FileProcessing
             return value;
          };
 
+         jefferson.ParseStarted += (_, args) =>
+         {
+            mContext.ReplaceCount += 1;
+            if (mContext.ReplaceCount > mContext.ReplaceLimit) throw new StopProcessingException();
+         };
+
          jefferson.PragmaSeen += (_, args) =>
          {
             if (args.Arguments.Equals("dontprocess", StringComparison.OrdinalIgnoreCase))
-               throw new DontProcessException();
+               throw new StopProcessingException();
+
+            var onceMatch = Regex.Match(args.Arguments.Trim(), "^once(\\s+\\d+)?$", RegexOptions.CultureInvariant);
+            if (onceMatch.Success)
+               mContext.ReplaceLimit = onceMatch.Groups[1].Success ? Int32.Parse(onceMatch.Groups[1].Value) : 1;
+            if (mContext.ReplaceCount > mContext.ReplaceLimit) throw new StopProcessingException();
          };
 
          return jefferson;
@@ -193,21 +205,15 @@ namespace Jefferson.FileProcessing
       {
          if (String.IsNullOrEmpty(source)) return "";
 
+         mContext.ReplaceCount = 0;
+         mContext.ReplaceLimit = Int32.MaxValue;
+
          try
          {
-            try
-            {
-               if (deep)
-                  return mTemplateParser.ReplaceDeep(source, mContext);
-               else
-                  return mTemplateParser.Replace(source, mContext);
-            }
-            catch (SyntaxException e)
-            {
-               if (e.InnerException != null && e.InnerException is DontProcessException)
-                  return source;
-               throw;
-            }
+            if (deep)
+               return mTemplateParser.ReplaceDeep(source, mContext);
+            else
+               return mTemplateParser.Replace(source, mContext);
          }
          catch (Exception e)
          {

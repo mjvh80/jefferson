@@ -33,6 +33,9 @@ namespace Jefferson.FileProcessing
          return clone;
       }
 
+      internal Int32 ReplaceCount = 0;
+      internal Int32 ReplaceLimit = Int32.MaxValue;
+
       #region Context Properties and Methods
 
       public String Trim(String str)

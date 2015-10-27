@@ -13,5 +13,12 @@ namespace Jefferson
       {
          return arg != null && _sValidNamespaceRegex.IsMatch(arg);
       }
+
+      private static readonly Regex _sDirectiveNameExpr = new Regex("^[a-zA-Z]+$", RegexOptions.CultureInvariant);
+
+      public static Boolean IsValidDirectiveName(String name)
+      {
+         return name != null && _sDirectiveNameExpr.IsMatch(name);
+      }
    }
 }

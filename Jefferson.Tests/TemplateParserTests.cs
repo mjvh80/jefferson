@@ -602,20 +602,6 @@ Var 'FieldOnCtx' resolved to 'fldOnCtx'.
       }
 
       [Fact]
-      public void Invalid_enums_are_detected()
-      {
-         // Jefferson.Tests.EnumTest;
-
-         Assert.Throws<ArgumentException>(() => replacer.Replace(@"
- 
-             $$#define foo = Jefferson.Tests.EnumTest.Foo/$$
-
-             $$ foo = 'f00' $$
-
-         ", context));
-      }
-
-      [Fact]
       public void Can_set_fields_and_props_on_context()
       {
          replacer.Replace("$$#define FieldOnCtx='foobar' /$$", context);

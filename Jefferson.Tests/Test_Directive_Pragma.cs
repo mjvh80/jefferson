@@ -50,5 +50,13 @@ namespace Jefferson.Tests
          var error = Assert.Throws<SyntaxException>(() => replacer.Replace(input, context));
          Assert.Contains(errorPart, error.Message);
       }
+
+      [Fact]
+      public void Pragma_exceptions_are_wrapped()
+      {
+         var p = new TemplateParser(new PragmaDirective());
+         p.PragmaSeen += (_, __) => { throw new InvalidOperationException("foobar"); };
+         Assert.Throws<SyntaxException>(() => p.Replace("$$#pragma blah /$$", context));
+      }
    }
 }

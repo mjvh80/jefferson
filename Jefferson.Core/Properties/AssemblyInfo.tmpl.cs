@@ -31,3 +31,4 @@ using System.Runtime.InteropServices;
 //$$/if$$
 
 [assembly: InternalsVisibleTo("Jefferson.Tests")]
+[assembly: InternalsVisibleTo("Jefferson.FileProcessing")]

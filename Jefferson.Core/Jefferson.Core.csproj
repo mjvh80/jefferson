@@ -128,7 +128,6 @@
   <ItemGroup>
     <Compile Include="Binders\IndexerVariableBinder.cs" />
     <Compile Include="Binders\ReadOnlyBinder.cs" />
-    <Compile Include="Directives\AssertDirective.cs" />
     <Compile Include="Directives\BlockDirective.cs" />
     <Compile Include="Directives\CommentDirective.cs" />
     <Compile Include="Directives\DefineDirective.cs" />
@@ -147,6 +146,7 @@
     <Compile Include="Extensions.cs" />
     <None Include="Properties\AssemblyInfo.tmpl.cs" />
     <Compile Include="ParserUtils.cs" />
+    <Compile Include="StopProcessingException.cs" />
     <Compile Include="TemplateOptions.cs" />
     <Compile Include="Output\IOutputWriter.cs" />
     <Compile Include="IVariableBinder.cs" />

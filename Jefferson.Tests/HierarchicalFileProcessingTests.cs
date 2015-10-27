@@ -8,7 +8,9 @@ namespace Jefferson.Tests
 {
    public class HierarchicalFileProcessingTests
    {
-      public class TestContext : FileScopeContext<TestContext, SimpleFileProcessor<TestContext>> { }
+      public class TestContext : FileScopeContext<TestContext, SimpleFileProcessor<TestContext>>
+      {
+      }
 
       [Fact]
       public void Can_process_hierarchical_items_correctly()
@@ -130,6 +132,58 @@ namespace Jefferson.Tests
 
          Assert.Contains("#pragma", result);
          Assert.Contains("$$# dodgy", result);
+      }
+
+      [Fact]
+      public void Pragma_once_works()
+      {
+         var p = new SimpleFileProcessor<TestContext>(new TestContext());
+
+         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Directory.CreateDirectory(tempDir);
+
+         var parent = Path.Combine(tempDir, "parent.txt");
+         File.WriteAllText(parent, @"
+         $$#pragma once /$$
+         $$#literal$$
+            $$#define PragmaCount = PragmaCount + 1 /$$
+            count = $$ PragmaCount $$
+         $$/literal$$
+         ");
+
+         var h = FileHierarchy.FromDirectory(tempDir);
+         p.ProcessFileHierarchy(h);
+
+         var result = File.ReadAllText(h.Files.First().TargetFullPath);
+
+         Assert.Contains("$$#define", result);
+         Assert.DoesNotContain("#literal", result);
+         Assert.DoesNotContain("#pragma", result);
+      }
+
+      [Fact]
+      public void Pragma_once_works_2()
+      {
+         var p = new SimpleFileProcessor<TestContext>(new TestContext());
+
+         var tempDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+         Directory.CreateDirectory(tempDir);
+
+         var parent = Path.Combine(tempDir, "parent.txt");
+         File.WriteAllText(parent, @"
+         $$#pragma once 2 /$$
+         $$#literal$$
+            $$#define foo = 'b' + 'ar' /$$
+            $$ foo $$ 
+         $$/literal$$
+         ");
+
+         var h = FileHierarchy.FromDirectory(tempDir);
+         p.ProcessFileHierarchy(h);
+
+         var result = File.ReadAllText(h.Files.First().TargetFullPath);
+
+         Assert.Contains("bar", result);
       }
    }
 }

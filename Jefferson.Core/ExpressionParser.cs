@@ -434,19 +434,6 @@ namespace Jefferson
          var convertIfBools = TypeUtils.ConvertIfOneBoolean;
          var widenNums = TypeUtils.WidenNumbers;
 
-         BinConversion convertIfEnums = f => (e1, e2) =>
-         {
-            if (e1.Type.IsEnum && e2.Type.IsEnum) return f(e1, e2);
-            if (!e1.Type.IsEnum && !e2.Type.IsEnum) return f(e1, e2);
-
-            if (e1.Type.IsEnum)
-               e2 = TypeUtils.GetConverter(e2, e1.Type, ignoreCase)(e2);
-            else
-               e1 = TypeUtils.GetConverter(e1, e2.Type, ignoreCase)(e1);
-
-            return f(e1, e2);
-         };
-
          // Start Syntax Definition.
          expression = () => ifExpr();
 
@@ -516,9 +503,6 @@ namespace Jefferson
             // Todo: we need to formulise this code a bit better and move it out.
             if (left.Type == typeof(String) || right.Type == typeof(String)) // note: one may represent null, which has Type not String
             {
-               if (left.Type.IsEnum || right.Type.IsEnum)
-                  return convertIfEnums(equals)(left, right);
-
                left = toString(left);
                right = toString(right);
 

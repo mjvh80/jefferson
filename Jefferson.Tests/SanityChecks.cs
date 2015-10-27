@@ -37,6 +37,14 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void All_test_classes_are_public()
+      {
+         Assert.True(GetType().Assembly.GetTypes().Where(type => type.IsClass)
+                              .Where(type => type.GetMethods().Any(method => method.GetCustomAttribute<FactAttribute>() != null))
+                              .All(type => type.IsPublic));
+      }
+
+      [Fact]
       public void Line_number_counting_works()
       {
          var text = "foobar";

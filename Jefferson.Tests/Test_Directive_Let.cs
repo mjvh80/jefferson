@@ -69,6 +69,19 @@ $$/let$$
       }
 
       [Fact]
+      public void Cannot_set_let_parameter()
+      {
+         var error = Assert.Throws<SyntaxException>(() => new TemplateParser(new LetDirective(), new DefineDirective()).Replace(@"
+         $$#let a(b)$$
+            $$#define b = 'blah' /$$
+         $$#out$$
+            foobar
+         $$/let$$
+         ", context));
+         Assert.Contains("Cannot set variable 'b' because it is the name of a let parameter.", error.Message);
+      }
+
+      [Fact]
       public void Can_bind_variable_from_context()
       {
          // FieldOnCtx

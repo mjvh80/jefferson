@@ -48,16 +48,17 @@ namespace Jefferson
          if (to == typeof(Boolean))
             return Convert_ToBool;
 
-         // Strings convert to enums.
-         if (to.IsEnum && from == typeof(String))
-         {
-            Contract.Assert(ignoreCase != null);
-            return e =>
-            {
-               e = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(to), e, Expression.Constant(ignoreCase));
-               return Expression.Convert(e, to);
-            };
-         }
+         //// Strings convert to enums.
+         // Removed because it can lead to run-time errors if using non-compile-time constants
+         //if (to.IsEnum && from == typeof(String))
+         //{
+         //   Contract.Assert(ignoreCase != null);
+         //   return e =>
+         //   {
+         //      e = Expression.Call(Utils.GetMethod(() => Enum.Parse(null, null, false)), Expression.Constant(to), e, Expression.Constant(ignoreCase));
+         //      return Expression.Convert(e, to);
+         //   };
+         //}
 
          // Ints convert to enums.
          if (to.IsEnum && from.IsIntegral())
@@ -76,6 +77,16 @@ namespace Jefferson
 
          // This means: we don't provide a conversion, we could attempt Expression.Convert elsewhere though.
          return null;
+      }
+
+      public static Func<Expression, Expression> GetConverterOrIdentity(Expression from, Type to, Boolean? ignoreCase = null)
+      {
+         return GetConverter(from, to, ignoreCase) ?? (e => e);
+      } 
+
+      public static Func<Expression, Expression> GetConverterOrIdentity(Expression from, Expression to, Boolean? ignoreCase = null)
+      {
+         return GetConverter(from, to, ignoreCase) ?? (e => e);
       }
 
       public static Func<Expression, Expression> GetConverter(Expression from, Expression to, Boolean? ignoreCase = null)

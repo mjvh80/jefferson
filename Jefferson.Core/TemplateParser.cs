@@ -37,12 +37,12 @@ namespace Jefferson
    {
       /// <summary>
       /// Returns the list of default directives supported. These are:
-      /// if, each, let, block, define, undef, comment, pragma and using
+      /// if, each, let, block, define, undef, comment, literal, pragma and using
       /// </summary>
       /// <returns></returns>
       public static IDirective[] GetDefaultDirectives()
       {
-         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new PragmaDirective(), new UsingDirective() };
+         return new IDirective[] { new IfDirective(), new EachDirective(), new LetDirective(), new BlockDirective(), new DefineDirective(), new UndefDirective(), new CommentDirective(), new LiteralDirective(), new PragmaDirective(), new UsingDirective() };
       }
 
       /// <summary>
@@ -67,7 +67,7 @@ namespace Jefferson
          if (directives != null)
             foreach (var directive in directives.Where(d => d != null))
             {
-               if (!_sDirectiveNameExpr.IsMatch(directive.Name))
+               if (!ParserUtils.IsValidDirectiveName(directive.Name))
                   throw Utils.Error("Directive '{0}' contains invalid characters.");
 
                if (_mDirectiveMap.ContainsKey(directive.Name))
@@ -89,7 +89,7 @@ namespace Jefferson
       }
 
       private readonly Dictionary<String, IDirective> _mDirectiveMap;
-      private static readonly Regex _sDirectiveNameExpr = new Regex("^[a-zA-Z]+$", RegexOptions.CultureInvariant); // for now
+   
 
       public TemplateOptions Options { get; private set; }
 
@@ -127,7 +127,21 @@ namespace Jefferson
             Options = this.Options
          };
 
+         this.OnStartParse(ctx);
+
          return ctx.Parse<TContext>(source);
+      }
+
+      private String _Replace(String source, Object context)
+      {
+         Contract.Requires(source != null);
+         Contract.Requires(context != null);
+         Contract.Ensures(Contract.Result<String>() != null);
+
+         var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
+         var buffer = new StringBuilder();
+         tree.Compile()(context, new StringBuilderOutputWriter(buffer));
+         return buffer.ToString();
       }
 
       /// <summary>
@@ -139,10 +153,14 @@ namespace Jefferson
          Contract.Requires(context != null);
          Contract.Ensures(Contract.Result<String>() != null);
 
-         var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
-         var buffer = new StringBuilder();
-         tree.Compile()(context, new StringBuilderOutputWriter(buffer));
-         return buffer.ToString();
+         try
+         {
+            return _Replace(source, context);
+         }
+         catch (StopProcessingException)
+         {
+            return source;
+         }
       }
 
       /// <summary>
@@ -161,7 +179,15 @@ namespace Jefferson
             if (loop > 1000) // say
                throw Utils.Error("Possible loop detected in ReplaceDeep, stopping after 1000 iterations.");
 
-            source = Replace(source, context);
+            try
+            {
+               source = _Replace(source, context);
+            }
+            catch (StopProcessingException)
+            {
+               break;
+            }
+
             loop += 1;
          }
          while (source.IndexOf("$$") >= 0);
@@ -194,8 +220,15 @@ namespace Jefferson
 
       internal void OnPragmaSeen(TemplateParserContext context, String arguments)
       {
-         if (PragmaSeen != null)
-            PragmaSeen(this, new PragmaEventArgs(context, arguments));
+         Contract.Requires(context != null);
+         if (PragmaSeen != null) PragmaSeen(this, new PragmaEventArgs(context, arguments));
+      }
+
+      internal event Action<Object, JeffersonEventArgs> ParseStarted;
+      internal void OnStartParse(TemplateParserContext context)
+      {
+         Contract.Requires(context != null);
+         if (ParseStarted != null) ParseStarted(this, new JeffersonEventArgs(context));
       }
 
       public Func<String, Object, Object> ValueFilter { get; set; }
@@ -205,19 +238,29 @@ namespace Jefferson
       private Func<String, String> OutputFilter { get; set; }
    }
 
-   public sealed class PragmaEventArgs : EventArgs
+   public class JeffersonEventArgs : System.EventArgs
    {
       public readonly TemplateParserContext ParserContext;
+
+      public JeffersonEventArgs(TemplateParserContext context)
+      {
+         Contract.Requires(context != null);
+         ParserContext = context;
+      }
+   }
+
+   public sealed class PragmaEventArgs : JeffersonEventArgs
+   {
       public readonly String Arguments;
 
       // todo: location?
 
       public PragmaEventArgs(TemplateParserContext context, String args)
+         : base(context)
       {
          Contract.Requires(context != null);
          Contract.Requires(!String.IsNullOrEmpty(args));
 
-         ParserContext = context;
          Arguments = args;
       }
    }
@@ -255,6 +298,21 @@ namespace Jefferson
          public TemplateOptions Options { get; internal set; }
 
          public readonly TemplateParser Parser;
+
+         private Dictionary<Object, Object> _mUserState;
+         public Dictionary<Object, Object> UserState
+         {
+            get { return (_mUserState ?? (_mUserState = new Dictionary<Object, Object>())); }
+         }
+
+         public TValue OptGetUserState<TValue>(Object key, TValue @default = default(TValue))
+         {
+            Object @value;
+            if (_mUserState == null) return @default;
+            if (!_mUserState.TryGetValue(key, out @value)) return @default;
+            if (@value is TValue) return (TValue)@value;
+            return @default;
+         }
 
          /// <summary>
          /// Represents the runtime List&lt;Object&gt;, the stack of current contexts (or scopes).
