@@ -190,6 +190,19 @@ namespace Jefferson.Tests
       }
 
       [Fact]
+      public void String_comparison_with_enums_can_be_case_controlled()
+      {
+         var result = new TemplateParser(new UsingDirective()).Replace(@"
+         $$#using Jefferson.Tests /$$
+
+         $$ 'foo' = EnumTest.Foo $$
+
+         ", context);
+
+         Assert.Contains("true", result.ToLowerInvariant());
+      }
+
+      [Fact]
       public void Deep_replacing_works()
       {
          var p = new TemplateParser(new IfDirective(), new LetDirective());
