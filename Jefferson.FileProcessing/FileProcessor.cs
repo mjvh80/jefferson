@@ -43,10 +43,21 @@ namespace Jefferson.FileProcessing
             return value;
          };
 
-         jefferson.ParseStarted += (_, args) =>
+         // todo: not sure these events are the right way to extend things.
+         // instead maybe better to override TemplateParser here
+
+         jefferson.ReplaceStarted += (_, args) =>
          {
             mContext.ReplaceCount += 1;
             if (mContext.ReplaceCount > mContext.ReplaceLimit) throw new StopProcessingException();
+         };
+
+         jefferson.ParserContextCreated += (_, args) =>
+         {
+            // todo: namespaces are case sensitive in matching here.
+            // See default nameresolver in expression parser, type finding needs update.
+            foreach (var uniqueNs in mContext.UsingNamespaces.Where(ns => !args.ParserContext.UsingNamespaces.Contains(ns)))
+               args.ParserContext.UsingNamespaces.Add(uniqueNs);
          };
 
          jefferson.PragmaSeen += (_, args) =>
@@ -263,6 +274,8 @@ namespace Jefferson.FileProcessing
          {
             if (variables.GetAttributeNode("flags") != null)
                this.Context.AllowUnknownNames = XmlUtils.OptReadBool(variables, "@allow-unknown-names", false, this.Error);
+
+            mContext.UsingNamespaces.AddRange(variables.GetAttribute("using").Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries));
 
             foreach (XmlElement variable in variables.SelectNodes("*").Cast<XmlElement>().Where(var => var.HasAttribute("from") || var.HasAttribute("name")))
             {

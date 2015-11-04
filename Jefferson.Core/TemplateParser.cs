@@ -127,8 +127,6 @@ namespace Jefferson
             Options = this.Options
          };
 
-         this.OnStartParse(ctx);
-
          return ctx.Parse<TContext>(source);
       }
 
@@ -137,6 +135,8 @@ namespace Jefferson
          Contract.Requires(source != null);
          Contract.Requires(context != null);
          Contract.Ensures(Contract.Result<String>() != null);
+
+         this.OnStartReplace();
 
          var tree = Parse<Object>(source, context.GetType(), context as IVariableBinder);
          var buffer = new StringBuilder();
@@ -224,11 +224,17 @@ namespace Jefferson
          if (PragmaSeen != null) PragmaSeen(this, new PragmaEventArgs(context, arguments));
       }
 
-      internal event Action<Object, JeffersonEventArgs> ParseStarted;
-      internal void OnStartParse(TemplateParserContext context)
+      internal event Action<Object, JeffersonEventArgs> ReplaceStarted;
+      internal void OnStartReplace()
+      {
+         if (ReplaceStarted != null) ReplaceStarted(this, new JeffersonEventArgs(null));
+      }
+
+      internal event Action<Object, JeffersonEventArgs> ParserContextCreated;
+      internal void OnCreateTemplateParserContext(TemplateParserContext context)
       {
          Contract.Requires(context != null);
-         if (ParseStarted != null) ParseStarted(this, new JeffersonEventArgs(context));
+         if (ParserContextCreated != null) ParserContextCreated(this, new JeffersonEventArgs(context));
       }
 
       public Func<String, Object, Object> ValueFilter { get; set; }
@@ -244,7 +250,6 @@ namespace Jefferson
 
       public JeffersonEventArgs(TemplateParserContext context)
       {
-         Contract.Requires(context != null);
          ParserContext = context;
       }
    }
@@ -280,6 +285,8 @@ namespace Jefferson
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
             PositionOffsets = new Stack<Int32>();
             Parser = parser;
+
+            parser.OnCreateTemplateParserContext(this);
          }
 
          internal Dictionary<String, IDirective> DirectiveMap;

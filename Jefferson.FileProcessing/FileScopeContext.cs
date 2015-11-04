@@ -24,12 +24,15 @@ namespace Jefferson.FileProcessing
 
       public HashSet<String> ReadOnlyVariables = new HashSet<String>(StringComparer.OrdinalIgnoreCase);
 
+      internal List<String> UsingNamespaces = new List<String>();
+
       public virtual TSelf CreateChildContext()
       {
          var clone = (TSelf)this.MemberwiseClone();
          clone.KeyValueStore = this.KeyValueStore.OpenChildScope();
          clone.AllowUnknownNames = this.AllowUnknownNames;
          clone.Processor = null; // just to be explicit, must be set by processor
+         clone.UsingNamespaces = new List<String>(UsingNamespaces);
          return clone;
       }
 

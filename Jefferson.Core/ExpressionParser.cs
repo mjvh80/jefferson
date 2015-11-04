@@ -264,6 +264,7 @@ namespace Jefferson
 
             if (typeName == null) return null;
 
+            // todo: case sensitivity
             var type = Utils.FindTypeInAppDomain(typeName, except: false);
             if (type == null) return null;
 
