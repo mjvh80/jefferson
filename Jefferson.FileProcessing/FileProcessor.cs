@@ -21,7 +21,7 @@ namespace Jefferson.FileProcessing
 
       public FileProcessor(TContext context)
       {
-         if (context == null) throw new ArgumentNullException("context");
+         if (context == null) throw new ArgumentNullException(nameof(context));
          if (context.Processor != null) throw new InvalidOperationException("Context should not be re-used accross processors.");
 
          mContext = context;
@@ -151,7 +151,7 @@ namespace Jefferson.FileProcessing
          key = key.Trim('$');
          Object result;
          if (mContext.KeyValueStore.TryGetValueInScope(key, out result))
-            return result == null ? null : result.ToString();
+            return result?.ToString();
          return null;
       }
 
@@ -247,7 +247,7 @@ namespace Jefferson.FileProcessing
       /// </param>
       public void Add(String key, String valueExpr, Boolean isExpr = false, Boolean except = false, Boolean @readonly = false)
       {
-         if (key == null) throw new ArgumentNullException("key");
+         if (key == null) throw new ArgumentNullException(nameof(key));
          if (key.Contains(".")) throw Error("VarReplacer key should not contain a period (.): " + key);
 
          key = key.Trim('$');

@@ -370,6 +370,7 @@ namespace Jefferson
 
          #region Parsing Utilities
 
+         // NOTE: whitespace is assumed to be whitespace according to Char.IsWhiteSpace, thus Trim and variants may be used in places.
          Func<Boolean> skipWhitespace = () => { var j = i; for (; i < expr.Length && Char.IsWhiteSpace(expr[i]); i += 1) ; return i > j; };
          Func<Boolean> skipComments = () =>
          {
@@ -398,7 +399,7 @@ namespace Jefferson
             advanceWhitespace();
             return true;
          };
-         Func<String, String> optAdvance = s => { var j = i; if (advanceIfMatch(s)) return expr.Substring(j, i - j); return null; };
+         Func<String, String> optAdvance = s => { var j = i; if (advanceIfMatch(s)) return expr.Substring(j, i - j).TrimEnd(); return null; };
          Func<Func<Boolean>, String> advanceWhile = c => { var token = ""; for (; i < expr.Length && c(); i++) { token += expr[i]; } return token; };
          Throw throwExpected = (s, args) => { throw SyntaxException.Create(expr, i, "Expected {0}", String.Format(s, args)); };
          Action<String> expectAdvance = (s) => { if (!advanceIfMatch(s)) throwExpected(s); };
@@ -413,7 +414,7 @@ namespace Jefferson
             advanceWhitespace();
 
             // Find the first operator match.
-         next: foreach (var def in opDefs.Where(def => def.Item1.Any(opStr => advanceIfMatch(opStr))))
+            next: foreach (var def in opDefs.Where(def => def.Item1.Any(opStr => advanceIfMatch(opStr))))
             {
                result = def.Item2(result, leftExpr()()); // fnWidenTypes(result, leftExpr()(), def.Item2);
                advanceWhitespace();
@@ -641,7 +642,7 @@ namespace Jefferson
                // else: method call, will handle below
             }
 
-            for (; ; )
+            for (;;)
             {
                advanceWhitespace();
 
@@ -688,7 +689,7 @@ namespace Jefferson
                   var parameters = new List<Expression>();
 
                   if (i < expr.Length && expr[i] != ')')
-                     for (; ; )
+                     for (;;)
                      {
                         advanceWhitespace();
                         parameters.Add(expression());
@@ -778,7 +779,7 @@ namespace Jefferson
                if (startChar == '\'' || startChar == '"')
                {
                   i += 1; // skip start quote
-               GetString: token += advanceWhile(() => expr[i] != startChar && expr[i] != '`'); // our string escape character is ` like PowerShell
+                  GetString: token += advanceWhile(() => expr[i] != startChar && expr[i] != '`'); // our string escape character is ` like PowerShell
                   if (i < expr.Length && expr[i] == '`')
                   {
                      if (i >= expr.Length - 1) throwExpected("valid String escape sequence");
@@ -841,7 +842,7 @@ namespace Jefferson
                            goto EndOptions;
                      }
 
-               EndOptions:
+                  EndOptions:
                   unitResult = Expression.New(typeof(Regex).GetConstructor(new[] { typeof(String), typeof(RegexOptions) }), Expression.Constant(token), Expression.Constant(options));
                }
                else if (Char.IsNumber(startChar) || startChar == '.')
@@ -882,10 +883,13 @@ namespace Jefferson
                      }
                   }
 
+                  Expression factor = null;
+
                   // We could support F#'s y and s, but I think that's going a bit too far probably.
-                  var suffix = optAdvance("[mMdDfF]|([uU][lL]?)|([lL][uU]?)");
+                  // Note: left-to-right order is important as mb must match greedily vs m (for decimal).
+                  var suffix = optAdvance("([kKmMgGtTpP][bB])|[mMdDfF]|([uU][lL]?)|([lL][uU]?)|");
                   Type numType;
-                  if (suffix == null)
+                  if (String.IsNullOrEmpty(suffix))
                      numType = isDouble ? typeof(Double) : typeof(Int32);
                   else
                      switch (suffix = suffix.ToUpperInvariant())
@@ -893,6 +897,11 @@ namespace Jefferson
                         case "M": numType = typeof(Decimal); isDouble = true; break; // not sure about this..
                         case "D": numType = typeof(Double); isDouble = true; break;
                         case "F": numType = typeof(Single); isDouble = true; break;
+                        case "KB": factor = Expression.Constant(1024); numType = typeof(Int32); break;
+                        case "MB": factor = Expression.Constant(1024 * 1024); numType = typeof(Int32); break;
+                        case "GB": factor = Expression.Constant(1024L * 1024 * 1024); numType = typeof(Int64); break;
+                        case "TB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024); numType = typeof(Int64); break;
+                        case "PB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024 * 1024); numType = typeof(Int64); break;
                         default:
                            if (suffix.Contains("L")) numType = suffix.Contains("U") ? typeof(UInt64) : typeof(Int64);
                            else numType = suffix.Contains("U") ? typeof(UInt32) : typeof(Int32);
@@ -910,6 +919,9 @@ namespace Jefferson
                      throwExpected("valid number, got '{0}' - expected a {1}number of type {2}", token, isHex ? "hex " : "", numType.FullName);
 
                   unitResult = Expression.Constant(args[3], numType);
+
+                  if (factor != null)
+                     unitResult = Expression.Multiply(unitResult, factor);
                }
                else if (startChar == '∞')
                {
@@ -924,7 +936,7 @@ namespace Jefferson
                else
                {
                   var first = true;
-                  for (; ; )
+                  for (;;)
                   {
                      advanceWhitespace();
                      var name = nameToken();

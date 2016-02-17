@@ -351,6 +351,16 @@ namespace Jefferson.Tests
          Assert.Throws<SyntaxException>(() => parser.ParseExpression("NullString =~ //i")(new Context()));
       }
 
+      [Fact]
+      public void Support_byte_literals()
+      {
+         Assert.Equal(1025, new ExpressionParser<Context, Int32>().ParseExpression("1kb + 1")(new Context()));
+         Assert.Equal(1024 * 1024 - 7, new ExpressionParser<Context, Int32>().ParseExpression("1mb - 7")(new Context()));
+         Assert.Equal(1024L * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1gb + 0")(new Context()));
+         Assert.Equal(1024L * 1024 * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1tb*1")(new Context()));
+         Assert.Equal(1024L * 1024 * 1024 * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1pb")(new Context()));
+      }
+
       [Theory]
       [InlineData(@"1//")]
       [InlineData("1   //")]
