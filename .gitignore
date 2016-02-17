@@ -8,4 +8,6 @@ build/nuget/Jefferson.**
 *.suo
 *.user
 
+.fake/
+
 build/temp/
