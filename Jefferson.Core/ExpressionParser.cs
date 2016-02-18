@@ -897,11 +897,11 @@ namespace Jefferson
                         case "M": numType = typeof(Decimal); isDouble = true; break; // not sure about this..
                         case "D": numType = typeof(Double); isDouble = true; break;
                         case "F": numType = typeof(Single); isDouble = true; break;
-                        case "KB": factor = Expression.Constant(1024); numType = typeof(Int32); break;
-                        case "MB": factor = Expression.Constant(1024 * 1024); numType = typeof(Int32); break;
-                        case "GB": factor = Expression.Constant(1024L * 1024 * 1024); numType = typeof(Int64); break;
-                        case "TB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024); numType = typeof(Int64); break;
-                        case "PB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024 * 1024); numType = typeof(Int64); break;
+                        case "KB": factor = Expression.Constant(1024); numType = isDouble ? typeof(Double) : typeof(Int32); break;
+                        case "MB": factor = Expression.Constant(1024 * 1024); numType = isDouble ? typeof(Double) : typeof(Int32); break;
+                        case "GB": factor = Expression.Constant(1024L * 1024 * 1024); numType = isDouble ? typeof(Double) : typeof(Int64); break;
+                        case "TB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024); numType = isDouble ? typeof(Double) : typeof(Int64); break;
+                        case "PB": factor = Expression.Constant(1024L * 1024 * 1024 * 1024 * 1024); numType = isDouble ? typeof(Double) : typeof(Int64); break;
                         default:
                            if (suffix.Contains("L")) numType = suffix.Contains("U") ? typeof(UInt64) : typeof(Int64);
                            else numType = suffix.Contains("U") ? typeof(UInt32) : typeof(Int32);
@@ -921,7 +921,7 @@ namespace Jefferson
                   unitResult = Expression.Constant(args[3], numType);
 
                   if (factor != null)
-                     unitResult = Expression.Multiply(unitResult, factor);
+                     unitResult = Expression.Multiply(unitResult, Expression.Convert(factor, unitResult.Type));
                }
                else if (startChar == '∞')
                {

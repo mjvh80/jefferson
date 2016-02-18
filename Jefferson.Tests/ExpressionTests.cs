@@ -359,6 +359,7 @@ namespace Jefferson.Tests
          Assert.Equal(1024L * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1gb + 0")(new Context()));
          Assert.Equal(1024L * 1024 * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1tb*1")(new Context()));
          Assert.Equal(1024L * 1024 * 1024 * 1024 * 1024, new ExpressionParser<Context, Int64>().ParseExpression("1pb")(new Context()));
+         Assert.Equal(1331, new ExpressionParser<Context, Int32>().ParseExpression("1.3kb")(new Context()));
       }
 
       [Theory]
