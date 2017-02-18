@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.30501.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.Core", "Jefferson.Core\Jefferson.Core.csproj", "{9DAA1710-7C91-4523-8DC9-F8D3A9FB3851}"
 EndProject
@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.FileProcessing", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.Build", "Jefferson.Build\Jefferson.Build.csproj", "{745F078E-087E-4979-8FBE-EC9AB5B52316}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.Build.MSBuildTest1", "Jefferson.Build.MSBuildTest1\Jefferson.Build.MSBuildTest1.csproj", "{14D86187-A000-41D2-8921-2B1A45452682}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,10 @@ Global
 		{745F078E-087E-4979-8FBE-EC9AB5B52316}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{745F078E-087E-4979-8FBE-EC9AB5B52316}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{745F078E-087E-4979-8FBE-EC9AB5B52316}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14D86187-A000-41D2-8921-2B1A45452682}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14D86187-A000-41D2-8921-2B1A45452682}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14D86187-A000-41D2-8921-2B1A45452682}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14D86187-A000-41D2-8921-2B1A45452682}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

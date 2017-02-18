@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("Jefferson.FileProcessing")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("$$Company$$")]
+[assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Jefferson.FileProcessing")]
 [assembly: AssemblyCopyright("$$Copyright$$")]
 [assembly: AssemblyTrademark("$$Trademark$$")]
