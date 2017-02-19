@@ -232,8 +232,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Directives\ProcessDirective.cs" />
+    <Compile Include="Extensions\GeneralExtensions.cs" />
     <Compile Include="MSBuild\BuildEngineExtensions.cs" />
+    <Compile Include="MSBuild\LogVerbosity.cs" />
     <Compile Include="MSBuild\PreprocessorTask.cs" />
+    <Compile Include="MSBuild\ScriptGlobals.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -39,6 +39,13 @@ namespace Jefferson.Build.MSBuild
             return Enumerable.Empty<String>();
         }
 
+        public static T GetEnvironmentVariable<T>(this IBuildEngine buildEngine, String key, T @default = default(T))
+        {
+            var @value = buildEngine.GetEnvironmentVariable(key, false).FirstOrDefault();
+            if (@value == null) return @default;
+            return (T)Convert.ChangeType(@value, typeof(T));
+        }
+
         public static IEnumerable<Tuple<String, IEnumerable<String>>> GetAllEnvironmentVariables(this IBuildEngine buildEngine)
         {
             var projectInstance = GetProjectInstance(buildEngine);

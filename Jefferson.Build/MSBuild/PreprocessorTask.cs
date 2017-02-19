@@ -5,14 +5,18 @@ using Microsoft.Build.Utilities;
 using System;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Scripting;
 using Microsoft.CodeAnalysis.Scripting;
+using Jefferson.Build.Extensions;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Jefferson.Build.MSBuild
 {
@@ -22,6 +26,8 @@ namespace Jefferson.Build.MSBuild
         // WARNING: don't marshal
         [Required]
         public ITaskItem[] Input { get; set; }
+
+        public Boolean Debug { get; set; }
 
         public String[] InputFiles => Input.Select(item => item.ToString()).ToArray();
 
@@ -36,6 +42,8 @@ namespace Jefferson.Build.MSBuild
         public String ScriptFile { get; set; }
 
         private readonly AppDomain _mExecutionDomain;
+
+        public LogVerbosity MSBuildVerbosity { get; private set; }
 
         // WARNING: not accessible in our appdomain due to MSBuild assembly binding redirects.
         // Our AppDomain only employs our own app.config which is used to redirect binding for Roslyn
@@ -61,192 +69,134 @@ namespace Jefferson.Build.MSBuild
 
                 // We'll need the app.config to facilitate binding redirects
                 ConfigurationFile = Path.GetFullPath(baseFile + ".config"),
-
-
             };
             _mExecutionDomain = AppDomain.CreateDomain("JeffersonPrecprocessorDomain", AppDomain.CurrentDomain.Evidence,
                 domainSetup);
 
             Log = new TaskLoggingHelper(this);
+
+            // Work out log verbosity. Bit of a hack.
+            // todo: test from VS build
+            var cmdLine = Environment.CommandLine;
+            if (Regex.IsMatch(cmdLine, "/v:q|/verbosity:q"))
+                MSBuildVerbosity = LogVerbosity.Quiet;
+            else if (Regex.IsMatch(cmdLine, "/v:m|/verbosity:m"))
+                MSBuildVerbosity = LogVerbosity.Minimal;
+            else if (Regex.IsMatch(cmdLine, "/v:n|/verbosity:n"))
+                MSBuildVerbosity = LogVerbosity.Normal;
+            else if (Regex.IsMatch(cmdLine, "/v:di|/verbosity:di"))
+                MSBuildVerbosity = LogVerbosity.Diagnostic;
+            else if (Regex.IsMatch(cmdLine, "/v:d|/verbosity:d"))
+                MSBuildVerbosity = LogVerbosity.Detailed;
+            else
+                MSBuildVerbosity = LogVerbosity.Normal;
         }
-
-        private AssemblyName[] _GetMSBuildAssemblies()
-            => AppDomain.CurrentDomain.GetAssemblies()
-                .Where(asm => asm.FullName.StartsWith("Microsoft.Build"))
-                .Select(asm => asm.GetName())
-                .ToArray();
-
-        // todo: remove
-        private class _LoadMSBuildAssembliesIntoDomain : MarshalByRefObject
-        {
-            public void LoadAssembliesFrom(PreprocessorTask task)
-            {
-                Console.WriteLine("LOADING");
-
-                foreach (var asm in task._GetMSBuildAssemblies())
-                {
-                    Console.WriteLine("LOAD: " + asm);
-                    AppDomain.CurrentDomain.Load(asm);
-                }
-
-                Console.WriteLine("DONE: " + task._GetMSBuildAssemblies().Length);
-            }
-        }
-
 
         public Boolean Execute()
         {
-            Log.LogMessage($"Got {_GetMSBuildAssemblies().Length} MSBuild asms...");
+            _Log("Starting Jefferson preprocessor. Please see project file for MSBuild configuration.");
+            _Log("Detected MSBuild log verbosity: " + MSBuildVerbosity);
 
+            // Create a proxy to do this in our execution domain.
+            var runner = ((_ExecuteInDomain)_mExecutionDomain.CreateInstanceAndUnwrap(GetType().Assembly.FullName, typeof(_ExecuteInDomain).FullName));
+            runner.Task = this;
 
+            _LogVerbose("Command line is " + System.Environment.CommandLine);
 
+            if (Debug || BuildEngine.GetEnvironmentVariable<Boolean>("JeffersonDebug"))
+                Debugger.Launch();
 
-            var runner = ((_ExecuteInDomain)
-                    _mExecutionDomain.CreateInstanceAndUnwrap(GetType().Assembly.FullName, typeof(_ExecuteInDomain).FullName));
-            runner.task = this;
-
-
-            //            System.Diagnostics.Debugger.Launch();
-            //          System.Diagnostics.Debugger.Break();
-
-
-            Log.LogMessage("Build engine can be marshalled: " + (this.BuildEngine is MarshalByRefObject));
-            Log.LogMessage("Build engine location:  " + this.BuildEngine.GetType().Assembly.Location);
-
-            //Log.LogMessage("Loaded assemblies are ");
-            //foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            //    if (asm.FullName.StartsWith("Microsoft.Build"))
-            //        Log.LogMessage($" - {asm.FullName} from {asm.Location}");
-
-            //Console.WriteLine("NOW GOT : " + _GetMSBuildAssemblies().Length);
-
+            _Log("About to start execution in execution domain.");
             return runner.Execute();
         }
 
         private class _ExecuteInDomain : MarshalByRefObject
         {
-            public PreprocessorTask task;
+            public PreprocessorTask Task;
 
             public Boolean Execute()
             {
-                task.Log.LogMessage(
-                    "Starting Jefferson preprocessor. Please see project file for MSBuild configuration.");
+                Task._Log("Starting Execute");
 
-                var bet = typeof(IBuildEngine);
-                task.Log.LogMessage("BuildEngine loaded from " + bet.Assembly.Location);
+                var buildVariables = Task._GetAllEnvironmentVariables();
 
-                IEnumerable<ScriptVariable> scriptVars = null;
-                if (task.ScriptFile != null)
+                // Dump if diagnostic logging.
+                if (Task.MSBuildVerbosity >= LogVerbosity.Diagnostic)
                 {
-                    task.Log.LogMessage(Path.GetFullPath(".\\" + task.ScriptFile));
-                    task.Log.LogMessage("Current dir = " + Path.GetFullPath("."));
-
-                    if (!File.Exists(task.ScriptFile))
-                        throw new Exception($"Template script file {task.ScriptFile} not found.");
-
-#if CODEDOM
-                var script = File.ReadAllText(task.ScriptFile);
-
-                const String scriptContextName = "ScriptedTemplateContext";
-
-                String exeName = String.Format(@"{0}\{1}.dll",
-                    System.Environment.CurrentDirectory,
-                    Path.GetFileName(task.ScriptFile).Replace(".", "_"));
-
-                var source = $@"
-                    using Microsoft.Build.Framework;
-                    using Microsoft.Build.Utilities;
-                    using System;
- // todo: usings
-                    public class {scriptContextName}: {typeof(TemplateContext).FullName.Replace('+', '.')} {{
-                       public {scriptContextName}(IBuildEngine engine, TaskLoggingHelper logger): 
-                          base(engine, logger) {{}}
-
-                    {script}
-
-                    }}";
-
-                task.Log.LogMessage("Compiling source: \r\n" + source);
-
-                task.Log.LogMessage("AppDomain base is: " + AppDomain.CurrentDomain.BaseDirectory);
-
-                // todo: references
-                //      var refs = AppDomain.CurrentDomain.GetAssemblies().Select(asm => asm.Location).ToArray();
-
-                //var refs =
-                //    AppDomain.CurrentDomain.GetAssemblies()
-                //        .Select(asm => asm.GlobalAssemblyCache ? asm.FullName : asm.Location)
-                //        .Concat(new[] { "mscorlib" })
-                //        .ToArray();
-
-                var refs = new[]
-                {
-
-                        typeof(Task).Assembly.FullName,
-                        GetType().Assembly.Location,
-                    };
-
-                var result = provider.CompileAssemblyFromSource(new CompilerParameters(refs)
-                {
-                    GenerateInMemory = false,
-                    CompilerOptions = "/langversion:5",
-                    OutputAssembly = exeName
-                    // todo: warning levels?
-
-                }, source);
-
-                if (result.Errors.Count > 0)
-                {
-                    foreach (CompilerError error in result.Errors)
-                    {
-                        task.Log.LogError(
-                            $"Script errors in file {error.FileName} at line {error.Line}: {error.ErrorText}");
-                    }
-
-                    throw new Exception($"There were errors in the template script {task.ScriptFile}.");
+                    Task._Log("Dumping MSBuild variables:");
+                    foreach (var kvp in buildVariables)
+                        Task._Log($"{kvp.Key} = {String.Join(";", kvp.Value)}");
                 }
 
-                contextType = result.CompiledAssembly.GetType(scriptContextName);
-#endif
+                IEnumerable<ScriptVariable> scriptVars = null;
+                if (Task.ScriptFile != null)
+                {
+                    Task._Log("Using script file: " + Task.ScriptFile);
+                    Task._LogVerbose("Current directory is " + Path.GetFullPath("."));
 
-                    // todo: options
-                    var script = CSharpScript.Create(File.ReadAllText(task.ScriptFile), ScriptOptions.Default);
+                    if (!File.Exists(Task.ScriptFile))
+                        throw new Exception($"Template script file {Task.ScriptFile} not found.");
+
+                    // If we have conditional compilation symbols, let's #define these.
+                    // This might not be ideal but I see no (easy) way to do this right now.
+                    // Todo: can we do this the "proper" Roslyn way?
+                    var buildVariableMap = _GetNameValueCollection(buildVariables);
+                    var defines = (buildVariableMap.GetValues("DefineConstants") ?? new String[0])
+                                    .SelectMany(c => c.Split(';'))
+                                    .Select(s => s.Trim())
+                                    .ToArray();
+
+                    var globals = new ScriptGlobals
+                    {
+                        MSBuild = buildVariableMap
+                    };
+
+                    Task._LogVerbose("Defined constants are: " + String.Join(";", defines));
+
+                    var scriptText = String.Join(Environment.NewLine, defines.Select(define => $"#define {define}")) +
+                                     (defines?.Length == 0 ? "" : Environment.NewLine) +
+                                     File.ReadAllText(Task.ScriptFile);
+
+                    Task._LogDiagnostic("Script is");
+                    Task._LogDiagnostic(scriptText);
+
+                    var script = CSharpScript.Create(scriptText, ScriptOptions.Default.WithFilePath(Task.ScriptFile), globalsType: globals.GetType());
+                    var diagnostics = script.Compile(CancellationToken.None);
+
+                    var compilation = script.GetCompilation();
 
 
 
 
-                    task.Log.LogMessage("Location of DLL: " + script.GetType().Assembly.Location);
-                    task.Log.LogMessage("File version: " + script.GetType().Assembly.FullName);
+                    //  compilation.synt
+
+                    //    var tree = compilation.SyntaxTrees.First();
+                    //   tree.
 
 
-                    task.Log.LogMessage(AppDomain.CurrentDomain.GetData("APP_CONFIG_FILE").ToString());
-
-                    task.Log.LogMessage("Loaded assemblies are ");
-                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                        task.Log.LogMessage($" - {asm.FullName} from {asm.Location}");
-
-
-
-                    //   throw new Exception("fuuuck");
-
-                    var compilation = script.Compile(CancellationToken.None);
-
-                    //      var compilation = (IEnumerable<Diagnostic>)compileMethod.Invoke(script, new object[] { CancellationToken.None });
-
-
-
-                    // Todo: warningsasoerrors?
-                    foreach (var diagnostic in compilation)
+                    // Todo: warningsasoerrors? Better yet, infer setting used by project?
+                    // todo: improve error messages here
+                    // todo: if using defines, check if we need to patch linenumbers
+                    foreach (var diagnostic in diagnostics)
                         if (diagnostic.Severity == Microsoft.CodeAnalysis.DiagnosticSeverity.Error)
-                            throw new Exception($"Error in script {task.ScriptFile}: {diagnostic}"); // todo
+                        {
+                            //var updatedDiagnostic = Diagnostic.Create(diagnostic.Descriptor,
+                            //                                          Location.Create())
+
+
+                            // preprocessorsymbolnames
+                            Task.Log.LogMessage("Path = " + diagnostic.Location.SourceTree.FilePath);
+
+                            // Note: we set the filepath above so we don't need to put it in the message.
+                            throw new Exception($"Error in script: {diagnostic}");
+                        }
 
                     // todo: pass msbuild properties as globals to the script
-                    var run = script.RunAsync(null).Result; // block
-
+                    var run = script.RunAsync(globals).Result; // block
                     scriptVars = run.Variables;
                 }
 
-                var contextInstance = new TemplateContext(scriptVars, task);
+                var contextInstance = new TemplateContext(scriptVars, buildVariables);
 
                 var fileProcessor = new SimpleFileProcessor<TemplateContext>(contextInstance,
                     TemplateParser.GetDefaultDirectives().Concat(new[] { new ProcessDirective() }).ToArray());
@@ -254,23 +204,24 @@ namespace Jefferson.Build.MSBuild
                 var processedFiles = new List<String>();
                 var originalFiles = new List<String>();
 
-
-
-                var skipCount = 0;
-                foreach (var file in task.InputFiles)
+                foreach (var file in Task.InputFiles)
                 {
-                    var firstLine = File.ReadLines(file).FirstOrDefault();
+                    if (!File.Exists(file))
+                        throw new Exception($"Could not find file '{file}'.");
 
+                    // Get first non-empty line.
+                    var firstLine =
+                        File.ReadLines(file).FirstOrDefault(line => !String.IsNullOrWhiteSpace(line));
 
+                    // Look for our process marker.
                     // todo: we could allow the script to filter source?
                     // by providing some sort of fixed named method, or class maybe?
                     // or use the script value
-
                     // We could perhaps look for any $$ in the entire contents but I worry about performance
                     // or whether that's really safe to do.
                     if (firstLine?.Trim().StartsWith("//$$#process") == true)
                     {
-                        task.Log.LogMessage($"Processing replacements in file {file}..");
+                        Task.Log.LogMessage($"Processing replacements in file {file}..");
 
                         String result = null;
                         try
@@ -279,19 +230,12 @@ namespace Jefferson.Build.MSBuild
                         }
                         catch (Exception e)
                         {
-                            // File might not be a Jefferson file.
-                            //      task.Log.LogError("Error replacing variables, file skipped.");
-                            //      task._LogException(e);
+                            // It is important that the exception does not cross domains.
+                            // Because Jefferson is not loaded in the MSBuild domain.
+                            for (var currentError = e; currentError != null; currentError = currentError.InnerException)
+                                Task.Log.LogError($"{currentError.Message}\r\n{currentError.StackTrace}");
 
-
-                            // exception should not cross domains here!
-
-                            throw new Exception(e.InnerException.Message);
-
-
-                            //          throw; // todo
-
-                            skipCount += 1;
+                            throw new Exception($"File replacement in file '{file}' failed. See build log for details.");
                         }
 
                         if (result == null) continue;
@@ -302,45 +246,59 @@ namespace Jefferson.Build.MSBuild
                         processedFiles.Add(tempFile);
                         originalFiles.Add(file);
                     }
+                    else
+                        Task.Log.LogMessage($"Skipped processing for file {file} (no marker found).");
                 }
 
-                task.Log.LogMessage(
-                    $"Done processing files. Processed {processedFiles.Count} files successfully, skipped {skipCount} file{(skipCount == 1 ? "s" : "")} due to errors.");
+                Task.Log.LogMessage($"Done processing files. Processed {processedFiles.Count} files.");
 
-                task.ProcessedFiles = processedFiles.ToArray();
-                task.OriginalFiles = originalFiles.ToArray();
+                Task.ProcessedFiles = processedFiles.ToArray();
+                Task.OriginalFiles = originalFiles.ToArray();
 
                 return true;
             }
 
+            private static NameValueCollection _GetNameValueCollection(KeyValuePair<String, String[]>[] map)
+            {
+                var result = new NameValueCollection();
+                foreach (var pair in map)
+                    foreach (var @value in pair.Value)
+                        result.Add(pair.Key, @value);
+                return result;
+            }
         }
 
-        private void _LogException(Exception e)
-        {
-            if (e == null) return;
-            Log.LogErrorFromException(e);
-            _LogException(e.InnerException);
-        }
-
-        private KeyValuePair<String, String>[] _GetAllEnvironmentVariables()
-        {
-            return this.BuildEngine.GetAllEnvironmentVariables()
-                .Select(tuple => new KeyValuePair<String, String>(tuple.Item1, String.Join(";", tuple.Item2)))
+        // Note: return type must be marshallable.
+        private KeyValuePair<String, String[]>[] _GetAllEnvironmentVariables()
+            => this.BuildEngine.GetAllEnvironmentVariables()
+                .Select(tuple => new KeyValuePair<String, String[]>(tuple.Item1, tuple.Item2.ToArray()))
                 .ToArray();
+
+        private void _Log(String msg) => this.Log.LogMessage(msg);
+
+        private void _LogVerbose(String msg)
+        {
+            if (MSBuildVerbosity >= LogVerbosity.Detailed)
+                this.Log.LogMessage(msg);
         }
 
-        // TODO: add warning here
+        private void _LogDiagnostic(String msg)
+        {
+            if (MSBuildVerbosity >= LogVerbosity.Diagnostic)
+                this.Log.LogMessage(msg);
+        }
+
         public class TemplateContext : FileScopeContext<TemplateContext, SimpleFileProcessor<TemplateContext>>
         {
-            public TemplateContext(IEnumerable<ScriptVariable> variables, PreprocessorTask task)
+            public TemplateContext(IEnumerable<ScriptVariable> variables, KeyValuePair<String, String[]>[] buildVariables)
             {
                 // Make all of the builds properties and items available to formatting.
 
                 // todo: decide what the best order is: MSBuild props over script or other way round.
-                foreach (var pair in task._GetAllEnvironmentVariables())
+                foreach (var pair in buildVariables)
                     try
                     {
-                        KeyValueStore.Add(pair.Key, pair.Value);
+                        KeyValueStore.Add(pair.Key, String.Join(";", pair.Value));
 
 
                     }
