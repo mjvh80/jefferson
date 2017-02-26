@@ -19,6 +19,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		build.fsx = build.fsx
 		fake.bat = fake.bat
 		README.txt = README.txt
+		test.csx = test.csx
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jefferson.FileProcessing", "Jefferson.FileProcessing\Jefferson.FileProcessing.csproj", "{9DF99E31-FA52-4D1F-84CE-E3714F4FA17B}"

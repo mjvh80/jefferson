@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.Text;
 
 namespace Jefferson.Build.Extensions
 {
@@ -14,6 +15,9 @@ namespace Jefferson.Build.Extensions
             return @enum ?? new T[0]; // could do better
         }
 
-       // public static Diagnostic AddLines(this Diagnostic d, Int32 number)
+        public static String OptAddNewline(this String str)
+        {
+            return String.IsNullOrEmpty(str) ? str : str + Environment.NewLine;
+        }
     }
 }
