@@ -80,6 +80,8 @@ namespace Jefferson.Build.MSBuild
         [CommandLineSettable]
         public LogVerbosity? LogVerbosityOverride { get; set; }
 
+        public LogVerbosity ActualLogVerbosity { get; private set; }
+
         // WARNING: not accessible in our appdomain due to MSBuild assembly binding redirects.
         // Our AppDomain only employs our own app.config which is used to redirect binding for Roslyn
         // and other assemblies.
@@ -170,6 +172,8 @@ namespace Jefferson.Build.MSBuild
 
         public Boolean Execute()
         {
+            ActualLogVerbosity = GetProperty<LogVerbosity?>(task => task.LogVerbosityOverride) ?? MSBuildVerbosity;
+
             _Log("Starting Jefferson preprocessor. Please see project file for MSBuild configuration.");
             _Log("Detected MSBuild log verbosity: " + MSBuildVerbosity);
 
@@ -196,7 +200,7 @@ namespace Jefferson.Build.MSBuild
 
                 var buildVariables = Task._GetAllEnvironmentVariables();
 
-                // Dump if diagnostic logging.
+                // Dump if diagnostic logging. todo: incorrect check for diagnostic
                 if (Task.MSBuildVerbosity >= LogVerbosity.Diagnostic)
                 {
                     Task._Log("Dumping MSBuild variables:");
@@ -204,14 +208,21 @@ namespace Jefferson.Build.MSBuild
                         Task._Log($"{kvp.Key} = {String.Join(";", kvp.Value)}");
                 }
 
+                var contextInstance = new TemplateContext(buildVariables);
+                _AddJeffersonSettingsToContext(contextInstance);
+
+                var fileProcessor = new SimpleFileProcessor<TemplateContext>(contextInstance,
+                    TemplateParser.GetDefaultDirectives().Concat(new[] { new ProcessDirective() }).ToArray());
+
                 IEnumerable<ScriptVariable> scriptVars = null;
-                if (Task.ScriptFile != null)
+                String scriptFile = GetProperty(Task, task => task.ScriptFile);
+                if (scriptFile != null)
                 {
-                    Task._Log("Using script file: " + Task.ScriptFile);
+                    Task._Log("Using script file: " + scriptFile);
                     Task._LogVerbose("Current directory is " + Path.GetFullPath("."));
 
-                    if (!File.Exists(Task.ScriptFile))
-                        throw new Exception($"Template script file {Task.ScriptFile} not found.");
+                    if (!File.Exists(scriptFile))
+                        throw new Exception($"Template script file {scriptFile} not found.");
 
                     // If we have conditional compilation symbols, let's #define these.
                     // Note that the "script" API gives us no way to update the SyntaxTree (e.g.
@@ -238,18 +249,19 @@ namespace Jefferson.Build.MSBuild
                     var scriptText =
                         String.Join(Environment.NewLine, defines.Select(define => $"#define {define}")).OptAddNewline() +
                         "#line 1".OptAddNewline() +
-                        File.ReadAllText(Task.ScriptFile);
+                        File.ReadAllText(scriptFile);
 
-                    Task._LogDiagnostic("Script before processing is");
-                    Task._LogDiagnostic(scriptText);
+                    Task._LogDiagnostic($"Script before processing is\r\n{scriptText}");
 
                     // Process the script itself, before executing it.
+                    scriptText = fileProcessor.Replace(scriptText, deep: false);
+                    Task._LogDiagnostic(new String('-', 80));
+                    Task._LogDiagnostic($"Script after processing:\r\n{scriptText}");
 
-                    // First, run preprocessor definitions to make these available.
                     var script =
                         CSharpScript.Create(scriptText,
-                            ScriptOptions.Default.WithFilePath(Task.ScriptFile)
-                                                 .WithSourceResolver(new ScriptResolver(null)),
+                            ScriptOptions.Default.WithFilePath(scriptFile)
+                                                 .WithSourceResolver(new ScriptResolver(Task, null)),
                             globalsType: globals.GetType());
 
                     var diagnostics = script.Compile();
@@ -266,20 +278,26 @@ namespace Jefferson.Build.MSBuild
                         }
 
                     if (foundError)
-                        throw new Exception($"Error in script {Task.ScriptFile}, see log for details.");
+                        throw new Exception($"Error in script {scriptFile}, see log for details.");
 
                     // todo: pass msbuild properties as globals to the script
                     var run = script.RunAsync(globals).Result; // block
                     scriptVars = run.Variables;
                 }
 
-                var contextInstance = new TemplateContext(scriptVars, buildVariables);
-
-                var fileProcessor = new SimpleFileProcessor<TemplateContext>(contextInstance,
-                    TemplateParser.GetDefaultDirectives().Concat(new[] { new ProcessDirective() }).ToArray());
-
                 var processedFiles = new List<String>();
                 var originalFiles = new List<String>();
+
+                if (scriptVars != null)
+                {
+                    // Create a new variable scope to allow for variable overriding.
+                    fileProcessor = fileProcessor.CreateChildScope();
+
+                    // Make script variables available to the processor.
+                    // Note that these may override MSBuild properties.
+                    foreach (var @var in scriptVars)
+                        fileProcessor.Context.KeyValueStore.Add(@var.Name, @var.Value);
+                }
 
                 foreach (var file in Task.InputFiles)
                 {
@@ -303,7 +321,8 @@ namespace Jefferson.Build.MSBuild
                         String result = null;
                         try
                         {
-                            result = fileProcessor.Replace(File.ReadAllText(file), deep: false);
+                            // Process the file within its own scope (avoids "cross" polluting variable "spaces")
+                            result = fileProcessor.CreateChildScope().Replace(File.ReadAllText(file), deep: false);
                         }
                         catch (Exception e)
                         {
@@ -335,6 +354,12 @@ namespace Jefferson.Build.MSBuild
                 return true;
             }
 
+            private void _AddJeffersonSettingsToContext(TemplateContext context)
+            {
+                context.KeyValueStore["JeffersonLogVerbosity"] = Task.ActualLogVerbosity;
+                context.KeyValueStore["JeffersonScriptFile"] = GetProperty(Task, task => task.ScriptFile);
+            }
+
             private static NameValueCollection _GetNameValueCollection(KeyValuePair<String, String[]>[] map)
             {
                 var result = new NameValueCollection();
@@ -354,59 +379,18 @@ namespace Jefferson.Build.MSBuild
         private String _GetEnvironmentVariable(String name)
             => String.Join(";", this.BuildEngine.GetEnvironmentVariable(name, false));
 
-        private void _Log(String msg) => this.Log.LogMessage(msg);
+        internal void _Log(String msg) => this.Log.LogMessage(msg);
 
-        private void _LogVerbose(String msg)
+        internal void _LogVerbose(String msg)
         {
-            if (_GetLogVerbosity() >= LogVerbosity.Detailed)
+            if (ActualLogVerbosity >= LogVerbosity.Detailed)
                 this.Log.LogMessage(msg);
         }
 
-        private void _LogDiagnostic(String msg)
+        internal void _LogDiagnostic(String msg)
         {
-            if (_GetLogVerbosity() >= LogVerbosity.Diagnostic)
+            if (ActualLogVerbosity >= LogVerbosity.Diagnostic)
                 this.Log.LogMessage(msg);
-        }
-
-        // Todo: continuous fetching of log verbosity is not ideal but probably not really a problem in this case
-        private LogVerbosity _GetLogVerbosity() => GetProperty<LogVerbosity?>(task => task.LogVerbosityOverride) ?? MSBuildVerbosity;
-
-        public class TemplateContext : FileScopeContext<TemplateContext, SimpleFileProcessor<TemplateContext>>
-        {
-            public TemplateContext(IEnumerable<ScriptVariable> variables, KeyValuePair<String, String[]>[] buildVariables)
-            {
-                // Make all of the builds properties and items available to formatting.
-
-                // todo: decide what the best order is: MSBuild props over script or other way round.
-                foreach (var pair in buildVariables)
-                    try
-                    {
-                        KeyValueStore.Add(pair.Key, String.Join(";", pair.Value));
-
-
-                    }
-                    catch (Exception e)
-                    {
-                        throw; // todo
-                               //logger.LogMessage($"Failed to add key {pair.Item1}");
-                               //logger.LogErrorFromException(e);
-                    }
-
-                if (variables != null)
-                    foreach (var scriptVar in variables)
-                    {
-                        try
-                        {
-                            KeyValueStore.Add(scriptVar.Name, scriptVar.Value);
-                        }
-                        catch (Exception e)
-                        {
-                            throw;
-                            //logger.LogMessage($"Failed to add script variable {scriptVar.Name}.");
-                            //logger.LogErrorFromException(e);
-                        }
-                    }
-            }
         }
     }
 }

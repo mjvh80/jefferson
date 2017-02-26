@@ -4,42 +4,49 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Jefferson.FileProcessing;
 using Microsoft.CodeAnalysis;
 
 namespace Jefferson.Build.MSBuild
 {
     class ScriptResolver : SourceReferenceResolver
     {
-        private readonly String _mSolutionDirectory;
+        private readonly PreprocessorTask _mTask;
+        private readonly SimpleFileProcessor<TemplateContext> _mFileProcessor;
 
-        public ScriptResolver(String solutionDirectory)
+        public ScriptResolver(PreprocessorTask task, SimpleFileProcessor<TemplateContext> fileProcessor)
         {
-            _mSolutionDirectory = solutionDirectory;
+            _mTask = task;
+            _mFileProcessor = fileProcessor;
         }
 
         public override Boolean Equals(Object other)
-            => (other as ScriptResolver)?._mSolutionDirectory == _mSolutionDirectory;
+            => (other as ScriptResolver)?._mFileProcessor == this._mFileProcessor;
 
-        public override Int32 GetHashCode() => _mSolutionDirectory.GetHashCode();
+        public override Int32 GetHashCode() => _mFileProcessor.GetHashCode();
 
         public override String NormalizePath(String path, String baseFilePath)
         {
-            return null; // todo?
+            return null;
         }
 
         public override String ResolveReference(String path, String baseFilePath)
         {
-            if (path == "<solution>")
-                return "<solution>";
+            if (Path.IsPathRooted(path))
+            {
+                _mTask._LogDiagnostic($"Path {path} referenced from {baseFilePath} resolved as {path}");
+                return path;
+            }
 
-            return null;
+            var parentDirectory = Path.GetFullPath(Path.Combine(baseFilePath, ".."));
+            var result = Path.Combine(parentDirectory, path);
+            _mTask._LogDiagnostic($"Path {path} referenced from {baseFilePath} resolved to {result}.");
+            return result;
         }
 
         public override Stream OpenRead(String resolvedPath)
         {
-            if (resolvedPath == "<solution>")
-                return File.OpenRead(@"C:\workspace\jefferson\test.csx");
-            return null;
+            return File.OpenRead(resolvedPath);
         }
     }
 }
