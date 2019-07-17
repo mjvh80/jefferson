@@ -1,6 +1,6 @@
 
 
-#r "packages/FAKE.4.20.0/tools/FakeLib.dll"
+#r "packages/FAKE.4.64.17/tools/FakeLib.dll"
 
 open Fake
 open Fake.FileSystemHelper
@@ -71,8 +71,6 @@ Target "Nuget" <| fun _ ->
    // Copy the main core DLL and its PDB.
    CopyFile libnet45 (coreBuildDir / "Jefferson.dll") 
    CopyFile libnet45 (coreBuildDir / "Jefferson.pdb")
-   CopyFile libnet45 (coreBuildDir / "CodeContracts/Jefferson.Contracts.dll") 
-   CopyFile libnet45 (coreBuildDir / "CodeContracts/Jefferson.Contracts.pdb")
 
    CopyFile libnet45 (procBuildDir / "Jefferson.FileProcessing.dll") 
    CopyFile libnet45 (procBuildDir / "Jefferson.FileProcessing.pdb")

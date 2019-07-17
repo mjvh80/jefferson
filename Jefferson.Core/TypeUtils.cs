@@ -1,6 +1,5 @@
 ﻿using Jefferson.Extensions;
 using System;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.InteropServices;
@@ -29,8 +28,14 @@ namespace Jefferson
 
       public static Func<Expression, Expression> GetConverter(Type from, Type to, Boolean? ignoreCase = null)
       {
-         Contract.Requires(from != null);
-         Contract.Requires(to != null);
+         if (from == null)
+         {
+             throw new ArgumentNullException(nameof(from), "Contract assertion not met: from != null");
+         }
+         if (to == null)
+         {
+             throw new ArgumentNullException(nameof(to), "Contract assertion not met: to != null");
+         }
 
          if (from == to) return e => e;
 
@@ -270,7 +275,10 @@ namespace Jefferson
 
       public static String CSharpToDotNetType(String type, Boolean ignoreCase)
       {
-         Contract.Requires(type != null);
+         if (type == null)
+         {
+             throw new ArgumentNullException(nameof(type), "Contract assertion not met: type != null");
+         }
 
          switch (ignoreCase ? type.ToLowerInvariant() : type)
          {

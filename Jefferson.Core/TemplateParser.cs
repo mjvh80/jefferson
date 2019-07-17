@@ -20,7 +20,6 @@ using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -98,8 +97,10 @@ namespace Jefferson
       /// </summary>
       public Action<TContext, IOutputWriter> Compile<TContext>(String source, Type contextType = null, IVariableBinder binder = null)
       {
-         Contract.Requires(source != null);
-         Contract.Ensures(Contract.Result<Action<TContext, IOutputWriter>>() != null);
+         if (source == null)
+         {
+             throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+         }
          return Parse<TContext>(source, contextType, binder).Compile();
       }
 
@@ -112,8 +113,10 @@ namespace Jefferson
       /// <param name="binder">Variable binder, see <see cref="IVariableBinder"/></param>
       public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source, Type contextType = null, IVariableBinder binder = null)
       {
-         Contract.Requires(source != null);
-         Contract.Ensures(Contract.Result<Expression>() != null);
+         if (source == null)
+         {
+             throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+         }
 
          if (contextType == null) contextType = typeof(TContext);
 
@@ -132,9 +135,14 @@ namespace Jefferson
 
       private String _Replace(String source, Object context)
       {
-         Contract.Requires(source != null);
-         Contract.Requires(context != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (source == null)
+         {
+             throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+         }
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
 
          this.OnStartReplace();
 
@@ -149,9 +157,14 @@ namespace Jefferson
       /// </summary>
       public String Replace(String source, Object context)
       {
-         Contract.Requires(source != null);
-         Contract.Requires(context != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (source == null)
+         {
+             throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+         }
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
 
          try
          {
@@ -168,9 +181,14 @@ namespace Jefferson
       /// </summary>
       public String ReplaceDeep(String source, Object context)
       {
-         Contract.Requires(source != null);
-         Contract.Requires(context != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (source == null)
+         {
+             throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+         }
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
 
          var loop = 1;
          do
@@ -201,8 +219,14 @@ namespace Jefferson
       /// </summary>
       public Object EvaluateExpression(String expr, Object context)
       {
-         Contract.Requires(expr != null);
-         Contract.Requires(context != null);
+         if (expr == null)
+         {
+             throw new ArgumentNullException(nameof(expr), "Contract assertion not met: expr != null");
+         }
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
 
          var ctx = new TemplateParserContext(this, "")
          {
@@ -220,7 +244,10 @@ namespace Jefferson
 
       internal void OnPragmaSeen(TemplateParserContext context, String arguments)
       {
-         Contract.Requires(context != null);
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
          if (PragmaSeen != null) PragmaSeen(this, new PragmaEventArgs(context, arguments));
       }
 
@@ -233,7 +260,10 @@ namespace Jefferson
       internal event Action<Object, JeffersonEventArgs> ParserContextCreated;
       internal void OnCreateTemplateParserContext(TemplateParserContext context)
       {
-         Contract.Requires(context != null);
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
          if (ParserContextCreated != null) ParserContextCreated(this, new JeffersonEventArgs(context));
       }
 
@@ -263,8 +293,14 @@ namespace Jefferson
       public PragmaEventArgs(TemplateParserContext context, String args)
          : base(context)
       {
-         Contract.Requires(context != null);
-         Contract.Requires(!String.IsNullOrEmpty(args));
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
+         if (String.IsNullOrEmpty(args))
+         {
+             throw new ArgumentException("Contract assertion not met: !String.IsNullOrEmpty(args)", nameof(args));
+         }
 
          Arguments = args;
       }
@@ -279,7 +315,10 @@ namespace Jefferson
       {
          internal TemplateParserContext(TemplateParser parser, String source)
          {
-            Contract.Requires(source != null);
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+            }
 
             Source = source;
             Output = Expression.Parameter(typeof(IOutputWriter), "output");
@@ -349,7 +388,10 @@ namespace Jefferson
          /// </summary>
          public void PushScope(Type context, IVariableBinder binder = null)
          {
-            Contract.Requires(context != null);
+            if (context == null)
+            {
+                throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+            }
             ContextTypes.Add(context);
             ContextDeclarations.Add(binder);
          }
@@ -360,7 +402,10 @@ namespace Jefferson
          public void PopScope()
          {
             var count = ContextTypes.Count;
-            Contract.Assert(count == ContextDeclarations.Count);
+            if (!(count == ContextDeclarations.Count))
+            {
+                throw new ArgumentException("Contract assertion not met: count == ContextDeclarations.Count", "value");
+            }
             ContextTypes.RemoveAt(count - 1);
             ContextDeclarations.RemoveAt(count - 1);
          }
@@ -406,12 +451,20 @@ namespace Jefferson
          /// </summary
          public Expression GetNthContext(Int32 n)
          {
-            Contract.Requires(n >= 0);
-            Contract.Ensures(Contract.Result<Expression>() != null);
-            Contract.Assert(RuntimeContexts.Type == typeof(List<Object>));
+            if (!(n >= 0))
+            {
+                throw new ArgumentOutOfRangeException(nameof(n), "Contract assertion not met: n >= 0");
+            }
+            if (!(RuntimeContexts.Type == typeof(List<Object>)))
+            {
+                throw new ArgumentException("Contract assertion not met: RuntimeContexts.Type == typeof(List<Object>)", "value");
+            }
 
             var indexer = typeof(List<Object>).GetProperty("Item");
-            Contract.Assume(indexer != null);
+            if (indexer == null)
+            {
+                throw new ArgumentException("Contract assertion not met: indexer != null", "value");
+            }
 
             var idx = ContextTypes.Count - 1 - n;
             return Expression.Convert(Expression.MakeIndex(RuntimeContexts, indexer, new[] { Expression.Constant(idx) }),
@@ -430,7 +483,10 @@ namespace Jefferson
 
          public Exception SyntaxError(Int32 relativeIndex, Exception inner, String msg, params Object[] args)
          {
-            Contract.Requires(inner != null);
+            if (inner == null)
+            {
+                throw new ArgumentNullException(nameof(inner), "Contract assertion not met: inner != null");
+            }
             return SyntaxException.Create(inner, Source, GetPosition(relativeIndex), msg, args);
          }
 
@@ -441,7 +497,10 @@ namespace Jefferson
          /// </summary>
          public Expression<Action<TContext, IOutputWriter>> Parse<TContext>(String source)
          {
-            Contract.Requires(source != null);
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source), "Contract assertion not met: source != null");
+            }
 
             if (!(typeof(TContext).IsAssignableFrom(CurrentContextType)))
                throw Utils.InvalidOperation("Invalid Compile call, generic argument type '{0}' is not a baseclass for current context type '{1}'.", typeof(TContext).FullName, CurrentContextType.FullName);
@@ -649,14 +708,19 @@ namespace Jefferson
             // Restart search after nested directive.
             if (nestedAfterEndIdx < 0) return -1; // got nowehere else to go
 
-            Contract.Assert(!ignoreNesting);
+            if (ignoreNesting)
+            {
+                throw new ArgumentException("Contract assertion not met: !ignoreNesting", nameof(ignoreNesting));
+            }
             return FindDirectiveEnd(source, nestedAfterEndIdx, false, terminators);
          }
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr)
          {
-            Contract.Requires(expr != null);
-            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
+            if (expr == null)
+            {
+                throw new ArgumentNullException(nameof(expr), "Contract assertion not met: expr != null");
+            }
 
             var ignore = 0;
             return _CompileExpression<TOutput>(expr, 0, 0, out ignore);
@@ -664,15 +728,19 @@ namespace Jefferson
 
          public CompiledExpression<Object, TOutput> CompileExpression<TOutput>(String expr, Int32 startAt, out Int32 stoppedAt)
          {
-            Contract.Requires(expr != null);
-            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
+            if (expr == null)
+            {
+                throw new ArgumentNullException(nameof(expr), "Contract assertion not met: expr != null");
+            }
             return _CompileExpression<TOutput>(expr, ExpressionParsingFlags.AllowEarlyStop, startAt, out stoppedAt);
          }
 
          private CompiledExpression<Object, TOutput> _CompileExpression<TOutput>(String expr, ExpressionParsingFlags flags, Int32 startAt, out Int32 stoppedAt)
          {
-            Contract.Requires(expr != null);
-            Contract.Ensures(Contract.Result<CompiledExpression<Object, TOutput>>() != null);
+            if (expr == null)
+            {
+                throw new ArgumentNullException(nameof(expr), "Contract assertion not met: expr != null");
+            }
 
             var parser = new ExpressionParser<Object, TOutput>();
 
@@ -695,9 +763,15 @@ namespace Jefferson
          /// </summary>
          public TOutput EvaluateExpression<TContext, TOutput>(String expr, TContext context)
          {
-            Contract.Requires(expr != null);
+            if (expr == null)
+            {
+                throw new ArgumentNullException(nameof(expr), "Contract assertion not met: expr != null");
+            }
 
-            Contract.Assert(RuntimeContexts == null);
+            if (RuntimeContexts != null)
+            {
+                throw new ArgumentException("Contract assertion not met: RuntimeContexts == null", "value");
+            }
             if (RuntimeContexts != null)
                throw Utils.InvalidOperation("EvaluateExpression cannot be used if Parse is used");
 
@@ -747,7 +821,10 @@ namespace Jefferson
          */
          private Expression ResolveName(Expression thisExpr, String name, String typeName, NameResolverDelegate defaultResolver)
          {
-            Contract.Assert(thisExpr.Type == GetNthContext(0).Type);
+            if (!(thisExpr.Type == GetNthContext(0).Type))
+            {
+                throw new ArgumentException("Contract assertion not met: thisExpr.Type == GetNthContext(0).Type", nameof(thisExpr));
+            }
 
             var startIndex = 0;
 
@@ -755,7 +832,10 @@ namespace Jefferson
             {
                if (_sParentExpr.IsMatch(typeName))
                {
-                  Contract.Assume(typeName.Length > 1);
+                  if (!(typeName.Length > 1))
+                  {
+                      throw new ArgumentException("Contract assertion not met: typeName.Length > 1", nameof(typeName));
+                  }
                   startIndex = Int32.Parse(typeName.Substring(1));
 
                   // special name which moves up the context stack.
@@ -800,10 +880,18 @@ namespace Jefferson
          /// </summary>
          public Expression SetVariable(Expression thisExpr, String name, Int32 relativePositionInSource, Expression @value)
          {
-            Contract.Requires(thisExpr != null);
-            Contract.Requires(name != null);
-            Contract.Requires(@value != null);
-            Contract.Ensures(Contract.Result<Expression>() != null);
+            if (thisExpr == null)
+            {
+                throw new ArgumentNullException(nameof(thisExpr), "Contract assertion not met: thisExpr != null");
+            }
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name), "Contract assertion not met: name != null");
+            }
+            if (@value == null)
+            {
+                throw new ArgumentNullException(nameof(@value), "Contract assertion not met: @value != null");
+            }
 
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];
@@ -843,9 +931,14 @@ namespace Jefferson
 
          public Expression RemoveVariable(Expression thisExpr, String name, Int32 relativePositionInSource)
          {
-            Contract.Requires(thisExpr != null);
-            Contract.Requires(name != null);
-            Contract.Ensures(Contract.Result<Expression>() != null);
+            if (thisExpr == null)
+            {
+                throw new ArgumentNullException(nameof(thisExpr), "Contract assertion not met: thisExpr != null");
+            }
+            if (name == null)
+            {
+                throw new ArgumentNullException(nameof(name), "Contract assertion not met: name != null");
+            }
 
             var currentContextExpr = GetNthContext(0);
             var binder = ContextDeclarations[ContextDeclarations.Count - 1];

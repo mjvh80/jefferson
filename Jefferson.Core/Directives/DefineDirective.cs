@@ -4,7 +4,6 @@ using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -27,7 +26,10 @@ namespace Jefferson.Directives
 
       protected internal DefineDirective(String name, Boolean allowOut, Boolean requireOut)
       {
-         Contract.Requires(!String.IsNullOrEmpty(name));
+         if (String.IsNullOrEmpty(name))
+         {
+             throw new ArgumentException("Contract assertion not met: !String.IsNullOrEmpty(name)", nameof(name));
+         }
 
          mRequireOutStatement = requireOut;
          mAllowOutStatement = allowOut;
@@ -241,8 +243,14 @@ namespace Jefferson.Directives
 
       private Tuple<String, String>[] _ParseParameters(Parsing.TemplateParserContext parserContext, String input, out String name)
       {
-         Contract.Requires(parserContext != null);
-         Contract.Requires(input != null);
+         if (parserContext == null)
+         {
+             throw new ArgumentNullException(nameof(parserContext), "Contract assertion not met: parserContext != null");
+         }
+         if (input == null)
+         {
+             throw new ArgumentNullException(nameof(input), "Contract assertion not met: input != null");
+         }
 
          var idx = input.IndexOf('(');
          if (idx < 0)
@@ -282,7 +290,10 @@ namespace Jefferson.Directives
       /// </summary>
       private static Tuple<String, String> _ParseTypedName(String argStr)
       {
-         Contract.Requires(argStr != null);
+         if (argStr == null)
+         {
+             throw new ArgumentNullException(nameof(argStr), "Contract assertion not met: argStr != null");
+         }
 
          var spaceIdx = argStr.IndexOfWhiteSpace();
          if (spaceIdx > 0 && spaceIdx < argStr.Length - 1)
@@ -298,11 +309,26 @@ namespace Jefferson.Directives
 
       protected virtual Expression MakeSetVariableExpr(TemplateParserContext parserContext, Expression context, IDefineVariableBinder binder, String name, Int32 relativePosInSource, Expression @value, List<ParameterExpression> locals)
       {
-         Contract.Requires(parserContext != null);
-         Contract.Requires(context != null);
-         Contract.Requires(binder != null);
-         Contract.Requires(name != null);
-         Contract.Requires(@value != null);
+         if (parserContext == null)
+         {
+             throw new ArgumentNullException(nameof(parserContext), "Contract assertion not met: parserContext != null");
+         }
+         if (context == null)
+         {
+             throw new ArgumentNullException(nameof(context), "Contract assertion not met: context != null");
+         }
+         if (binder == null)
+         {
+             throw new ArgumentNullException(nameof(binder), "Contract assertion not met: binder != null");
+         }
+         if (name == null)
+         {
+             throw new ArgumentNullException(nameof(name), "Contract assertion not met: name != null");
+         }
+         if (@value == null)
+         {
+             throw new ArgumentNullException(nameof(@value), "Contract assertion not met: @value != null");
+         }
 
          return parserContext.SetVariable(context, name, relativePosInSource, @value);
       }

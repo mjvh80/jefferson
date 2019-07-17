@@ -1,11 +1,9 @@
 ﻿using Jefferson.Parsing;
 using System;
-using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
 {
-   [ContractClass(typeof(Contracts.DirectiveContract))]
    public interface IDirective
    {
       /// <summary>
