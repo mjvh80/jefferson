@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 
 namespace Jefferson.Directives
@@ -47,7 +46,11 @@ namespace Jefferson.Directives
             if (idx > 0) // elif
             {
                closeIdx = source.IndexOf("$$", idx);
-               Contract.Assume(closeIdx >= 0, "found unmatched $$"); // should have been caught when looking for nested directives
+               if (!(closeIdx >= 0))
+               {
+                  // should have been caught when looking for nested directives
+                  throw new ArgumentException("found unmatched $$", "value");
+               }
 
                expr = source.Substring(idx, closeIdx - idx);
                closeIdx += 2;
@@ -74,7 +77,10 @@ namespace Jefferson.Directives
                break;
 
             // Else or Else if.
-            Contract.Assume(endIfIdx <= source.Length - 6);
+            if (!(endIfIdx <= source.Length - 6))
+            {
+                throw new ArgumentException("Contract assertion not met: endIfIdx <= source.Length - 6", nameof(source));
+            }
             switch (source.Substring(endIfIdx, 6))
             {
                case "$$#els": // else
@@ -98,9 +104,14 @@ namespace Jefferson.Directives
 
       private static Expression _MakeIfExpression(List<Tuple<Expression, Expression>> stmts, Int32 i = 0)
       {
-         Contract.Requires(stmts != null);
-         Contract.Requires(i >= 0 && i < stmts.Count);
-         Contract.Ensures(Contract.Result<Expression>() != null);
+         if (stmts == null)
+         {
+             throw new ArgumentNullException(nameof(stmts), "Contract assertion not met: stmts != null");
+         }
+         if (!(i >= 0 && i < stmts.Count))
+         {
+             throw new ArgumentException("Contract assertion not met: i >= 0 && i < stmts.Count", nameof(i));
+         }
 
          if (stmts[i].Item1 == null) // else
             return stmts[i].Item2;

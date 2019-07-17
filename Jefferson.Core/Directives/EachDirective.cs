@@ -4,7 +4,6 @@ using Jefferson.Parsing;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq;
 using System.Linq.Expressions;
 
@@ -43,7 +42,10 @@ namespace Jefferson.Directives
          String empty = null;
          if (endIdx != source.Length)
          {
-            Contract.Assume(endIdx + 2 < source.Length);
+            if (!(endIdx + 2 < source.Length))
+            {
+                throw new ArgumentException("Contract assertion not met: endIdx + 2 < source.Length", nameof(source));
+            }
             var ifClose = source.IndexOf("$$", endIdx + 2) + 2;
             endIdx = source.Length;
             empty = source.Substring(ifClose, endIdx - ifClose);

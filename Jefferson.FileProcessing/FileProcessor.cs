@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
@@ -167,7 +166,10 @@ namespace Jefferson.FileProcessing
       /// <param name="deepReplacement">Replace until there are no further $$ markers.</param>
       public void ProcessFileHierarchy(IFileHierarchy hierarchy, Boolean deepReplacement = true)
       {
-         Contract.Requires(hierarchy != null);
+         if (hierarchy == null)
+         {
+             throw new ArgumentNullException(nameof(hierarchy), "Contract assertion not met: hierarchy != null");
+         }
          _ProcessFileHierarchy((TSelf)this, hierarchy, deepReplacement);
       }
 
@@ -266,7 +268,10 @@ namespace Jefferson.FileProcessing
 
       public void AddFromNodes(XmlNodeList vars, Boolean @fixed = false)
       {
-         Contract.Requires(vars != null);
+         if (vars == null)
+         {
+             throw new ArgumentNullException(nameof(vars), "Contract assertion not met: vars != null");
+         }
 
          if (vars.Count == 0) return;
 

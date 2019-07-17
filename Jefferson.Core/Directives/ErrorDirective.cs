@@ -1,7 +1,6 @@
 ﻿using Jefferson.Output;
 using System;
 using System.Diagnostics;
-using System.Diagnostics.Contracts;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -19,7 +18,10 @@ namespace Jefferson.Directives
 
       public ErrorDirective(Type exceptionType)
       {
-         Contract.Requires(exceptionType != null);
+         if (exceptionType == null)
+         {
+             throw new ArgumentNullException(nameof(exceptionType), "Contract assertion not met: exceptionType != null");
+         }
          _mCtor = exceptionType.GetConstructor(new[] { typeof(String) });
          if (_mCtor == null)
             throw new InvalidOperationException("Invalid exception type: public constructor with a single string parameter expected");

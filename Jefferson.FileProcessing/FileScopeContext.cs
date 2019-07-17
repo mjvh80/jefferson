@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -51,7 +50,10 @@ namespace Jefferson.FileProcessing
       /// </summary>
       public String IncludeFile(String file)
       {
-         Contract.Requires(file != null);
+         if (file == null)
+         {
+             throw new ArgumentNullException(nameof(file), "Contract assertion not met: file != null");
+         }
          if (!File.Exists(file)) throw Processor.Error("IncludeFile: file '{0}' does not exist (processed file: '{1}')", file, Processor.GetCurrentFile());
          return File.ReadAllText(file);
       }
@@ -61,7 +63,10 @@ namespace Jefferson.FileProcessing
       /// </summary>
       public String OptIncludeFile(String file)
       {
-         Contract.Requires(file != null);
+         if (file == null)
+         {
+             throw new ArgumentNullException(nameof(file), "Contract assertion not met: file != null");
+         }
          if (!File.Exists(file)) return "";
          return File.ReadAllText(file);
       }
@@ -73,8 +78,10 @@ namespace Jefferson.FileProcessing
 
       public String Download(String url)
       {
-         Contract.Requires(url != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (url == null)
+         {
+             throw new ArgumentNullException(nameof(url), "Contract assertion not met: url != null");
+         }
 
          using (var client = new WebClient())
             return client.DownloadString(url);
@@ -107,7 +114,10 @@ namespace Jefferson.FileProcessing
 
       public String Raise(String error)
       {
-         Contract.Requires(error != null);
+         if (error == null)
+         {
+             throw new ArgumentNullException(nameof(error), "Contract assertion not met: error != null");
+         }
          throw Processor.Error("Error raised from template: " + error);
       }
 
@@ -155,9 +165,14 @@ namespace Jefferson.FileProcessing
 
       public String IncludeXmlFile(String file, String xpath, Boolean scoped)
       {
-         Contract.Requires(xpath != null);
-         Contract.Requires(file != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (xpath == null)
+         {
+             throw new ArgumentNullException(nameof(xpath), "Contract assertion not met: xpath != null");
+         }
+         if (file == null)
+         {
+             throw new ArgumentNullException(nameof(file), "Contract assertion not met: file != null");
+         }
 
          if (!Path.IsPathRooted(file))
             throw Processor.Error("IncludeXmlFile: only absolute paths accepted");
@@ -198,8 +213,10 @@ namespace Jefferson.FileProcessing
       /// </summary>
       public String IncludeXmlFile(String file, Boolean createScope)
       {
-         Contract.Requires(file != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (file == null)
+         {
+             throw new ArgumentNullException(nameof(file), "Contract assertion not met: file != null");
+         }
 
          if (!Path.IsPathRooted(file))
             throw Processor.Error("IncludeXmlFile: only absolute paths accepted");
@@ -252,9 +269,14 @@ namespace Jefferson.FileProcessing
       /// </summary>
       public String IncludeXmlFiles(String wildCardedFile, String xpath)
       {
-         Contract.Requires(wildCardedFile != null);
-         Contract.Requires(xpath != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (wildCardedFile == null)
+         {
+             throw new ArgumentNullException(nameof(wildCardedFile), "Contract assertion not met: wildCardedFile != null");
+         }
+         if (xpath == null)
+         {
+             throw new ArgumentNullException(nameof(xpath), "Contract assertion not met: xpath != null");
+         }
 
          // Note: relative files are not currently supported because we don't keep track of currently processing file.
          if (!Path.IsPathRooted(wildCardedFile))
@@ -270,8 +292,10 @@ namespace Jefferson.FileProcessing
 
       public String OptIncludeXmlFile(String file)
       {
-         Contract.Requires(file != null);
-         Contract.Ensures(Contract.Result<String>() != null);
+         if (file == null)
+         {
+             throw new ArgumentNullException(nameof(file), "Contract assertion not met: file != null");
+         }
 
          if (!Path.IsPathRooted(file))
             throw Processor.Error("OptIncludeXmlFile: only absolute paths accepted");
